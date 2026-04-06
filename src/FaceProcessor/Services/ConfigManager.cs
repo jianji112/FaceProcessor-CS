@@ -1,4 +1,5 @@
-using System.Text.Json;
+using System.IO;
+using OpenCvSharp;
 using FaceProcessor.Models;
 
 namespace FaceProcessor.Services;
@@ -24,7 +25,7 @@ public class ConfigManager
         try
         {
             var json = File.ReadAllText(ConfigPath);
-            return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+            return System.Text.Json.JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
         }
         catch
         {
@@ -34,7 +35,7 @@ public class ConfigManager
 
     public void Save()
     {
-        var json = JsonSerializer.Serialize(Config, new JsonSerializerOptions
+        var json = System.Text.Json.JsonSerializer.Serialize(Config, new System.Text.Json.JsonSerializerOptions
         {
             WriteIndented = true
         });

@@ -1,3 +1,4 @@
+using System.IO;
 using OpenCvSharp;
 using FaceProcessor.Models;
 
@@ -90,7 +91,8 @@ public class ImageProcessor
             var mask3 = new Mat();
             Cv2.Merge(new[] { mask, mask, mask }, mask3);
             var blended = new Mat();
-            Cv2.AddWeighted(blurred, 1.0, faceRegion, 0.0, 0, blended, -1, mask3);
+            Cv2.AddWeighted(blurred, 1.0, faceRegion, 0.0, 0, blended);
+            Cv2.AddWeighted(blended, 1.0, faceRegion, 0.0, 0, blended, -1, mask3);
             
             blended.CopyTo(faceRegion);
         }
@@ -142,7 +144,8 @@ public class ImageProcessor
 
             // 混合
             var blended = new Mat();
-            Cv2.AddWeighted(mesh, 0.7, faceRegion, 0.3, 0, blended, -1, mask3);
+            Cv2.AddWeighted(mesh, 0.7, faceRegion, 0.3, 0, blended);
+            Cv2.AddWeighted(blended, 1.0, faceRegion, 0.0, 0, blended, -1, mask3);
             blended.CopyTo(faceRegion);
         }
 
@@ -209,7 +212,7 @@ public class ImageProcessor
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? "");
 
             var ext = format.ToLower() switch
             {
@@ -222,7 +225,7 @@ public class ImageProcessor
             var parameters = format.ToLower() switch
             {
                 "jpg" or "jpeg" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
-                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.WebpQuality, quality) },
+                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.WebPCompression, quality / 10) },
                 _ => new[] { new ImageEncodingParam(ImwriteFlags.PngCompression, 6) }
             };
 

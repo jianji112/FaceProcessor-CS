@@ -1,3 +1,4 @@
+using System.IO;
 using OpenCvSharp;
 using FaceProcessor.Models;
 
@@ -9,14 +10,14 @@ namespace FaceProcessor.Services;
 public class VideoProcessor
 {
     private readonly FaceDetector? _detector;
-    private readonly ImageProcessor _imageProcessor;
+    private readonly ImageProcessor _processor;
     private CancellationTokenSource? _cts;
     private bool _isProcessing;
 
     public VideoProcessor(FaceDetector? detector = null)
     {
         _detector = detector;
-        _imageProcessor = new ImageProcessor(detector);
+        _processor = new ImageProcessor(detector);
     }
 
     /// <summary>
@@ -48,7 +49,6 @@ public class VideoProcessor
             var width = (int)capture.Get(VideoCaptureProperties.FrameWidth);
             var height = (int)capture.Get(VideoCaptureProperties.FrameHeight);
             var totalFrames = (int)capture.Get(VideoCaptureProperties.FrameCount);
-            var fourcc = capture.Get(VideoCaptureProperties.FourCC);
 
             ReportStatus(progress, 0, $"视频信息: {width}x{height}, {fps:F1}fps, {totalFrames}帧");
 
@@ -85,7 +85,7 @@ public class VideoProcessor
                 var faces = _detector?.Detect(frame) ?? new List<FaceRect>();
 
                 // 处理帧
-                var processed = _imageProcessor.Process(frame, faces, mode, options);
+                var processed = _processor.Process(frame, faces, mode, options);
 
                 // 写入
                 writer.Write(processed);

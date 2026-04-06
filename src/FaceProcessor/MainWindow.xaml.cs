@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using FaceProcessor.Models;
 using FaceProcessor.Services;
 using FaceProcessor.Views;
@@ -15,6 +16,7 @@ public partial class MainWindow : Window
     
     private ImageTabView? _imageTab;
     private VideoTabView? _videoTab;
+    private readonly DispatcherTimer _signatureTimer;
 
     public MainWindow()
     {
@@ -37,6 +39,18 @@ public partial class MainWindow : Window
         
         // 初始化标签页
         InitTabs();
+        
+        // 设置署名定时器：60秒后隐藏
+        _signatureTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(60)
+        };
+        _signatureTimer.Tick += (s, e) =>
+        {
+            SignatureText.Visibility = Visibility.Collapsed;
+            _signatureTimer.Stop();
+        };
+        _signatureTimer.Start();
     }
 
     private void InitTabs()

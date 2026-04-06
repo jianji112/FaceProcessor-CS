@@ -89,8 +89,8 @@
             </TabItem>
         </TabControl>
         
-        <!-- 右下角署名 -->
-        <TextBlock Grid.Row="2" Text="由Cc陈制作" FontSize="10" 
+        <!-- 右下角署名（60秒后自动消失） -->
+        <TextBlock Grid.Row="2" Name="SignatureText" Text="由Cc陈制作" FontSize="10" 
                    Foreground="#666666" Opacity="0.4"
                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
                    Margin="0,0,5,5" Panel.ZIndex="1000"/>

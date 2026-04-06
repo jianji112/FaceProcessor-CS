@@ -19,28 +19,29 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Create models directory
-        run: |
-          mkdir -p src/FaceProcessor/models
-          mkdir -p assets/models
-
       - name: Download ONNX model
+        shell: pwsh
         run: |
-          # 尝试从多个源下载 YOLOv8-Face 模型
-          curl -L -o assets/models/yolov8n-face.onnx "https://huggingface.co/Nick3151/yolov8n-face/resolve/main/yolov8n-face.onnx" `
-            -H "User-Agent: Mozilla/5.0" `
-            --retry 3 --retry-delay 5
+          New-Item -ItemType Directory -Force -Path "assets\models"
+          New-Item -ItemType Directory -Force -Path "src\FaceProcessor\models"
           
-          # 如果下载失败，使用备用模型
-          if (-not (Test-Path "assets/models/yolov8n-face.onnx")) {
-            Write-Host "模型下载失败，将使用占位符"
-            echo "placeholder" > assets/models/yolov8n-face.onnx
+          # 下载 YOLOv8-Face 模型
+          $modelUrl = "https://huggingface.co/Nick3151/yolov8n-face/resolve/main/yolov8n-face.onnx"
+          $modelPath = "assets\models\yolov8n-face.onnx"
+          
+          try {
+            Invoke-WebRequest -Uri $modelUrl -OutFile $modelPath -UseBasicParsing
+            Write-Host "Model downloaded successfully"
           }
-
-      - name: Copy model to project
-        run: |
-          if (Test-Path "assets/models/yolov8n-face.onnx") {
-            Copy-Item "assets/models/yolov8n-face.onnx" "src/FaceProcessor/models/" -Force
+          catch {
+            Write-Host "Model download failed: $_"
+            # 创建占位符
+            "placeholder" | Out-File -FilePath $modelPath
+          }
+          
+          # 复制到项目目录
+          if (Test-Path $modelPath) {
+            Copy-Item $modelPath "src\FaceProcessor\models\" -Force
           }
 
       - name: Restore dependencies
@@ -53,18 +54,20 @@ jobs:
             -p:PublishSingleFile=true `
             -p:EnableCompressionInSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
-            -o ./publish
+            -o .\publish
 
-      - name: Ensure models directory in output
+      - name: Ensure models in output
+        shell: pwsh
         run: |
-          if (-not (Test-Path "publish/models")) {
-            mkdir publish/models
+          if (-not (Test-Path "publish\models")) {
+            New-Item -ItemType Directory -Force -Path "publish\models"
           }
-          if (Test-Path "assets/models/yolov8n-face.onnx") {
-            Copy-Item "assets/models/yolov8n-face.onnx" "publish/models/" -Force
+          if (Test-Path "assets\models\yolov8n-face.onnx") {
+            Copy-Item "assets\models\yolov8n-face.onnx" "publish\models\" -Force
           }
 
       - name: List output files
+        shell: pwsh
         run: |
           Write-Host "Output files:"
           Get-ChildItem publish -Recurse | Select-Object FullName, Length

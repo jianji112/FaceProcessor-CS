@@ -88,5 +88,11 @@
                 </ScrollViewer>
             </TabItem>
         </TabControl>
+        
+        <!-- 右下角署名 -->
+        <TextBlock Grid.Row="2" Text="由Cc陈制作" FontSize="10" 
+                   Foreground="#666666" Opacity="0.4"
+                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Margin="0,0,5,5" Panel.ZIndex="1000"/>
     </Grid>
 </Window>

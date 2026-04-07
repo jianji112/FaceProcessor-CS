@@ -66,25 +66,19 @@ public sealed class LogCollector : TraceListener
         System.Windows.Application.Current?.Dispatcher.Invoke(Entries.Clear);
     }
 
-    /// <summary>安装到 Debug 列表（应用启动时调用一次）</summary>
+    /// <summary>安装到 Trace 列表（应用启动时调用一次）</summary>
     public static void Install()
     {
         // 移除旧实例（防止重复）
-        var existingInDebug = Debug.Listeners.OfType<LogCollector>().FirstOrDefault();
-        if (existingInDebug != null)
-            Debug.Listeners.Remove(existingInDebug);
-
         var existingInTrace = Trace.Listeners.OfType<LogCollector>().FirstOrDefault();
         if (existingInTrace != null)
             Trace.Listeners.Remove(existingInTrace);
 
-        // 添加到 Debug.Listeners（Debug.WriteLine 使用这个）
-        Debug.Listeners.Add(Instance);
-
-        // 同时添加到 Trace.Listeners（Trace.WriteLine 使用这个）
+        // 添加到 Trace.Listeners（Trace.WriteLine 使用这个）
+        // 注意：Debug.Listeners 在 .NET 8/Core 下不存在，只能用 Trace.Listeners
         Trace.Listeners.Add(Instance);
 
-        System.Diagnostics.Debug.WriteLine("[LogCollector] 已安装到 Debug.Listeners 和 Trace.Listeners");
+        Trace.WriteLine("[LogCollector] 已安装到 Trace.Listeners");
     }
 }
 

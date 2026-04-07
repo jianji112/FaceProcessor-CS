@@ -65,10 +65,26 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style TargetType="ComboBoxItem">
+        
+        <!-- ComboBox 下拉项样式 -->
+        <Style x:Key="ModernCbItem" TargetType="ComboBoxItem">
             <Setter Property="Background" Value="#2A2A4A"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter Property="Background" Value="#3A3A5A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         
         <Style TargetType="TextBox" x:Key="ModernTb">

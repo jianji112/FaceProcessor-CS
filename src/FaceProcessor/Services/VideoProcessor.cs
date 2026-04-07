@@ -4,9 +4,7 @@ using FaceProcessor.Models;
 
 namespace FaceProcessor.Services;
 
-/// <summary>
-/// 视频处理器
-/// </summary>
+/// <summary>视频处理器</summary>
 public class VideoProcessor
 {
     private readonly FaceDetector? _detector;
@@ -20,9 +18,7 @@ public class VideoProcessor
         _processor = new ImageProcessor(detector);
     }
 
-    /// <summary>
-    /// 处理视频
-    /// </summary>
+    /// <summary>处理视频</summary>
     public async Task<bool> ProcessVideoAsync(
         string inputPath,
         string outputPath,
@@ -38,9 +34,12 @@ public class VideoProcessor
         
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 开始处理: {inputPath}");
+            
             using var capture = new VideoCapture(inputPath);
             if (!capture.IsOpened())
             {
+                System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 无法打开视频文件: {inputPath}");
                 ReportStatus(progress, -1, "无法打开视频文件");
                 return false;
             }
@@ -50,7 +49,9 @@ public class VideoProcessor
             var height = (int)capture.Get(VideoCaptureProperties.FrameHeight);
             var totalFrames = (int)capture.Get(VideoCaptureProperties.FrameCount);
 
-            ReportStatus(progress, 0, $"视频信息: {width}x{height}, {fps:F1}fps, {totalFrames}帧");
+            System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 视频信息: {width}x{height}, {fps:F1}fps, {totalFrames}帧");
+
+            ReportStatus(progress, 0, $"视频: {width}x{height}, {fps:F1}fps, {totalFrames}帧");
 
             // 创建临时输出文件（无音频）
             tempOutputPath = Path.Combine(
@@ -63,17 +64,20 @@ public class VideoProcessor
 
             if (!writer.IsOpened())
             {
+                System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 无法创建输出文件: {tempOutputPath}");
                 ReportStatus(progress, -1, "无法创建输出文件");
                 return false;
             }
 
             var frameIndex = 0;
+            var faceCount = 0;
             var frame = new Mat();
 
             while (capture.Read(frame))
             {
                 if (_cts.Token.IsCancellationRequested)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 用户取消");
                     ReportStatus(progress, -1, "已取消");
                     return false;
                 }
@@ -83,6 +87,7 @@ public class VideoProcessor
 
                 // 检测人脸
                 var faces = _detector?.Detect(frame) ?? new List<FaceRect>();
+                faceCount += faces.Count;
 
                 // 处理帧
                 var processed = _processor.Process(frame, faces, mode, options);
@@ -92,11 +97,13 @@ public class VideoProcessor
 
                 frameIndex++;
                 var progressValue = (double)frameIndex / totalFrames;
-                ReportStatus(progress, progressValue, $"处理中: {frameIndex}/{totalFrames} 帧");
+                ReportStatus(progress, progressValue, $"处理中: {frameIndex}/{totalFrames} 帧, 检测到 {faces.Count} 个人脸");
             }
 
             writer.Release();
             capture.Release();
+
+            System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 帧处理完成: {frameIndex}帧, 共检测到 {faceCount} 个人脸");
 
             ReportStatus(progress, 0.95, "正在合并音频...");
 
@@ -108,21 +115,30 @@ public class VideoProcessor
 
                 if (mergeSuccess)
                 {
-                    // 删除临时文件
                     try { File.Delete(tempOutputPath); } catch { }
+                    System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 音频合并成功");
                 }
                 else
                 {
-                    // 音频合并失败，使用无音频版本
                     File.Copy(tempOutputPath, outputPath, overwrite: true);
                     try { File.Delete(tempOutputPath); } catch { }
+                    System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 音频合并失败，使用无音频版本");
                 }
             }
             else
             {
-                // 不保留音频，直接复制
                 File.Copy(tempOutputPath, outputPath, overwrite: true);
                 try { File.Delete(tempOutputPath); } catch { }
+            }
+
+            // 验证输出文件
+            if (File.Exists(outputPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 输出文件成功: {outputPath}, 大小: {new FileInfo(outputPath).Length} bytes");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 输出文件不存在: {outputPath}");
             }
 
             ReportStatus(progress, 1.0, "处理完成");
@@ -130,6 +146,7 @@ public class VideoProcessor
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[VideoProcessor] 处理失败: {ex.Message}\n{ex.StackTrace}");
             ReportStatus(progress, -1, $"处理失败: {ex.Message}");
             return false;
         }
@@ -145,18 +162,14 @@ public class VideoProcessor
         }
     }
 
-    /// <summary>
-    /// 取消处理
-    /// </summary>
+    /// <summary>取消处理</summary>
     public void Cancel()
     {
         _cts?.Cancel();
         _isProcessing = false;
     }
     
-    /// <summary>
-    /// 重置取消状态（用于下一次处理）
-    /// </summary>
+    /// <summary>重置取消状态</summary>
     public void Reset()
     {
         _cts?.Dispose();
@@ -164,14 +177,12 @@ public class VideoProcessor
         _isProcessing = false;
     }
 
-    /// <summary>
-    /// 是否正在处理
-    /// </summary>
+    /// <summary>是否正在处理</summary>
     public bool IsProcessing => _isProcessing;
 
     private void ReportStatus(IProgress<double>? progress, double value, string message)
     {
-        // 这里可以扩展为更详细的状态报告
+        System.Diagnostics.Debug.WriteLine($"[VideoProcessor] {value:P0} - {message}");
         progress?.Report(value);
     }
 }

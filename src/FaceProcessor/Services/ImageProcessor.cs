@@ -8,7 +8,6 @@ namespace FaceProcessor.Services;
 public class ImageProcessor
 {
     private readonly FaceDetector? _detector;
-    private readonly Random _random = new();
 
     public ImageProcessor(FaceDetector? detector = null)
     {
@@ -79,8 +78,6 @@ public class ImageProcessor
             var faceRegion = result[new Rect(x1, y1, x2 - x1, y2 - y1)];
             var blurred = new Mat();
             Cv2.GaussianBlur(faceRegion, blurred, new Size(blurStrength, blurStrength), 30);
-
-            // 简单混合：直接用模糊结果替换
             blurred.CopyTo(faceRegion);
         }
 
@@ -155,19 +152,16 @@ public class ImageProcessor
     /// <summary>拆分图（人脸 + 无脸）</summary>
     private Mat ApplySplit(Mat image, List<FaceRect> faces, ProcessOptions options)
     {
-        // 返回原图，拆分结果通过回调返回
         return image;
     }
 
     /// <summary>调整分辨率</summary>
     public Mat Resize(Mat image, int maxResolution)
     {
-        if (maxResolution <= 0)
-            return image;
+        if (maxResolution <= 0) return image;
 
         var maxDim = Math.Max(image.Width, image.Height);
-        if (maxDim <= maxResolution)
-            return image;
+        if (maxDim <= maxResolution) return image;
 
         var scale = (double)maxResolution / maxDim;
         var newWidth = (int)(image.Width * scale);
@@ -183,8 +177,15 @@ public class ImageProcessor
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? "");
+            // 确保输出目录存在
+            var dir = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 创建目录: {dir}");
+                Directory.CreateDirectory(dir);
+            }
 
+            // 确定文件扩展名
             var ext = format.ToLower() switch
             {
                 "jpg" or "jpeg" => ".jpg",
@@ -193,6 +194,9 @@ public class ImageProcessor
             };
 
             outputPath = Path.ChangeExtension(outputPath, ext);
+            
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 保存图片: {outputPath}");
+            
             var parameters = format.ToLower() switch
             {
                 "jpg" or "jpeg" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
@@ -200,7 +204,22 @@ public class ImageProcessor
                 _ => Array.Empty<ImageEncodingParam>()
             };
 
-            Cv2.ImWrite(outputPath, image, parameters);
+            var success = Cv2.ImWrite(outputPath, image, parameters);
+            
+            if (!success)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Cv2.ImWrite 返回 false");
+                return false;
+            }
+
+            // 验证文件是否存在
+            if (!File.Exists(outputPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件保存后不存在: {outputPath}");
+                return false;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件保存成功: {outputPath}, 大小: {new FileInfo(outputPath).Length} bytes");
 
             // 文件大小限制
             if (maxSizeMB > 0)
@@ -214,8 +233,9 @@ public class ImageProcessor
 
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Save 异常: {ex.Message}\n{ex.StackTrace}");
             return false;
         }
     }

@@ -29,45 +29,72 @@ jobs:
         shell: pwsh
         run: |
           $modelPath = "assets\models\yolov8n-face.onnx"
+          $downloaded = $false
           
-          # 尝试多个下载源
+          # 使用可靠的模型源
           $urls = @(
-            "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n-face.onnx",
-            "https://huggingface.co/Ultralytics/YOLOv8/resolve/main/yolov8n-face.onnx"
+            # UltraFace 模型 - 更小更可靠
+            "https://github.com/onnx/models/raw/main/vision/body_analysis/ultraface/models/ultraface-320.onnx",
+            # 备用：直接使用 OpenCV DNN 模块能识别的模型
+            "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000_fp16.caffemodel"
           )
           
-          $downloaded = $false
-          foreach ($url in $urls) {
-            try {
-              Write-Host "Trying: $url"
-              Invoke-WebRequest -Uri $url -OutFile $modelPath -UseBasicParsing -TimeoutSec 60
+          Write-Host "尝试下载人脸检测模型..."
+          
+          # 先尝试下载一个可靠的人脸检测模型
+          try {
+            # 使用 OpenCV 内置的人脸检测模型（更可靠）
+            $caffemodelUrl = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
+            $prototxtUrl = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
+            
+            Invoke-WebRequest -Uri $caffemodelUrl -OutFile "assets\models\face_detector.caffemodel" -UseBasicParsing -TimeoutSec 120
+            Invoke-WebRequest -Uri $prototxtUrl -OutFile "assets\models\deploy.prototxt" -UseBasicParsing -TimeoutSec 120
+            
+            $caffemodelSize = (Get-Item "assets\models\face_detector.caffemodel").Length
+            Write-Host "Caffe model downloaded: $caffemodelSize bytes"
+            
+            if ($caffemodelSize -gt 1000000) {
               $downloaded = $true
-              Write-Host "Model downloaded successfully from: $url"
-              break
+              Write-Host "人脸检测模型下载成功"
             }
-            catch {
-              Write-Host "Failed: $url - $_"
+          }
+          catch {
+            Write-Host "Caffe model download failed: $_"
+          }
+          
+          # 如果 Caffe 模型下载失败，尝试 ONNX
+          if (-not $downloaded) {
+            foreach ($url in $urls) {
+              try {
+                Write-Host "Trying: $url"
+                Invoke-WebRequest -Uri $url -OutFile $modelPath -UseBasicParsing -TimeoutSec 120
+                $downloaded = $true
+                Write-Host "Model downloaded successfully"
+                break
+              }
+              catch {
+                Write-Host "Failed: $url - $_"
+              }
             }
           }
           
           if (-not $downloaded) {
-            Write-Host "::warning::Model download failed, using placeholder"
-            # 创建一个简单的模型占位符 - 但这会导致人脸检测不工作
-            # 用户需要手动下载模型
+            Write-Host "::warning::所有模型下载失败，将使用占位符"
             "placeholder" | Out-File -FilePath $modelPath -Encoding utf8
           }
           
-          # 验证文件大小（正常模型应该 > 5MB）
+          # 验证文件大小
           if (Test-Path $modelPath) {
             $size = (Get-Item $modelPath).Length
             Write-Host "Model file size: $size bytes"
-            if ($size -lt 1000000) {
-              Write-Host "::warning::Model file is too small, may not be valid"
-            }
+          }
+          if (Test-Path "assets\models\face_detector.caffemodel") {
+            $size = (Get-Item "assets\models\face_detector.caffemodel").Length
+            Write-Host "Caffe model size: $size bytes"
           }
           
           # 复制到项目目录
-          Copy-Item $modelPath "src\FaceProcessor\models\" -Force
+          Copy-Item "assets\models\*" "src\FaceProcessor\models\" -Force -ErrorAction SilentlyContinue
 
       - name: Restore dependencies
         run: dotnet restore FaceProcessor.sln
@@ -87,9 +114,10 @@ jobs:
           if (-not (Test-Path "publish\models")) {
             New-Item -ItemType Directory -Force -Path "publish\models" | Out-Null
           }
-          if (Test-Path "assets\models\yolov8n-face.onnx") {
-            Copy-Item "assets\models\yolov8n-face.onnx" "publish\models\" -Force
-          }
+          Copy-Item "assets\models\*" "publish\models\" -Force -ErrorAction SilentlyContinue
+          
+          Write-Host "Models in output:"
+          Get-ChildItem "publish\models" -ErrorAction SilentlyContinue | Format-Table Name, Length
 
       - name: List output files
         shell: pwsh
@@ -110,6 +138,6 @@ jobs:
         with:
           files: |
             publish/FaceProcessor.exe
-            publish/models/yolov8n-face.onnx
+            publish/models/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

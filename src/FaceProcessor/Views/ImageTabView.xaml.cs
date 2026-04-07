@@ -117,6 +117,7 @@ public partial class ImageTabView : UserControl
         StatusText.Text = "处理中...";
 
         var success = 0;
+        var failed = 0;
         var total = _selectedFiles.Count;
         var mode = (ProcessMode)ModeCombo.SelectedIndex;
         var maxRes = _configManager.Config.MaxResolution;
@@ -132,21 +133,66 @@ public partial class ImageTabView : UserControl
                 try
                 {
                     using var img = Cv2.ImRead(inputPath);
-                    if (img.Empty()) continue;
+                    if (img.Empty()) 
+                    {
+                        failed++;
+                        continue;
+                    }
 
+                    // 检测人脸
                     var faces = _detector?.Detect(img) ?? new List<FaceRect>();
-                    var options = new ProcessOptions { MaxResolution = maxRes, MaxFileSizeMB = maxSize, Format = format, Quality = quality };
+                    
+                    // 处理
+                    var options = new ProcessOptions 
+                    { 
+                        MaxResolution = maxRes, 
+                        MaxFileSizeMB = maxSize, 
+                        Format = format, 
+                        Quality = quality 
+                    };
                     var processed = _processor.Process(img, faces, mode, options);
 
-                    var outputDir = SubfolderRadio.IsChecked == true
-                        ? Path.Combine(Path.GetDirectoryName(inputPath)!, _configManager.Config.SubfolderName)
-                        : OutputPathTextBox.Text;
-                    var outputPath = Path.Combine(outputDir, Path.GetFileName(inputPath));
+                    // 确定输出目录
+                    string outputDir;
+                    if (SubfolderRadio.IsChecked == true)
+                    {
+                        outputDir = Path.Combine(Path.GetDirectoryName(inputPath)!, _configManager.Config.SubfolderName);
+                    }
+                    else
+                    {
+                        outputDir = OutputPathTextBox.Text;
+                        if (string.IsNullOrWhiteSpace(outputDir))
+                        {
+                            // 如果输出路径为空，使用源文件所在目录
+                            outputDir = Path.GetDirectoryName(inputPath)!;
+                        }
+                    }
+
+                    // 确保输出目录存在
+                    if (!Directory.Exists(outputDir))
+                    {
+                        Directory.CreateDirectory(outputDir);
+                    }
+
+                    // 确定输出文件名
+                    var outputPath = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(inputPath) + 
+                        GetExtension(format));
                     
-                    _processor.Save(processed, outputPath, format, quality, maxSize);
-                    success++;
+                    // 保存
+                    if (_processor.Save(processed, outputPath, format, quality, maxSize))
+                    {
+                        success++;
+                    }
+                    else
+                    {
+                        failed++;
+                    }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"处理失败: {inputPath} - {ex.Message}");
+                    failed++;
+                }
 
                 Dispatcher.Invoke(() =>
                 {
@@ -156,7 +202,17 @@ public partial class ImageTabView : UserControl
             }
         });
 
-        StatusText.Text = $"✅ 完成！成功处理 {success}/{total}";
+        StatusText.Text = $"✅ 完成！成功 {success}/{total}" + (failed > 0 ? $"，失败 {failed}" : "");
         ProcessBtn.IsEnabled = true;
+    }
+
+    private string GetExtension(string format)
+    {
+        return format.ToLower() switch
+        {
+            "jpg" or "jpeg" => ".jpg",
+            "webp" => ".webp",
+            _ => ".png"
+        };
     }
 }

@@ -19,30 +19,55 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Create models directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "assets\models" | Out-Null
+          New-Item -ItemType Directory -Force -Path "src\FaceProcessor\models" | Out-Null
+
       - name: Download ONNX model
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "assets\models"
-          New-Item -ItemType Directory -Force -Path "src\FaceProcessor\models"
-          
-          # 下载 YOLOv8-Face 模型
-          $modelUrl = "https://huggingface.co/Nick3151/yolov8n-face/resolve/main/yolov8n-face.onnx"
           $modelPath = "assets\models\yolov8n-face.onnx"
           
-          try {
-            Invoke-WebRequest -Uri $modelUrl -OutFile $modelPath -UseBasicParsing
-            Write-Host "Model downloaded successfully"
+          # 尝试多个下载源
+          $urls = @(
+            "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n-face.onnx",
+            "https://huggingface.co/Ultralytics/YOLOv8/resolve/main/yolov8n-face.onnx"
+          )
+          
+          $downloaded = $false
+          foreach ($url in $urls) {
+            try {
+              Write-Host "Trying: $url"
+              Invoke-WebRequest -Uri $url -OutFile $modelPath -UseBasicParsing -TimeoutSec 60
+              $downloaded = $true
+              Write-Host "Model downloaded successfully from: $url"
+              break
+            }
+            catch {
+              Write-Host "Failed: $url - $_"
+            }
           }
-          catch {
-            Write-Host "Model download failed: $_"
-            # 创建占位符
-            "placeholder" | Out-File -FilePath $modelPath
+          
+          if (-not $downloaded) {
+            Write-Host "::warning::Model download failed, using placeholder"
+            # 创建一个简单的模型占位符 - 但这会导致人脸检测不工作
+            # 用户需要手动下载模型
+            "placeholder" | Out-File -FilePath $modelPath -Encoding utf8
+          }
+          
+          # 验证文件大小（正常模型应该 > 5MB）
+          if (Test-Path $modelPath) {
+            $size = (Get-Item $modelPath).Length
+            Write-Host "Model file size: $size bytes"
+            if ($size -lt 1000000) {
+              Write-Host "::warning::Model file is too small, may not be valid"
+            }
           }
           
           # 复制到项目目录
-          if (Test-Path $modelPath) {
-            Copy-Item $modelPath "src\FaceProcessor\models\" -Force
-          }
+          Copy-Item $modelPath "src\FaceProcessor\models\" -Force
 
       - name: Restore dependencies
         run: dotnet restore FaceProcessor.sln
@@ -60,7 +85,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path "publish\models")) {
-            New-Item -ItemType Directory -Force -Path "publish\models"
+            New-Item -ItemType Directory -Force -Path "publish\models" | Out-Null
           }
           if (Test-Path "assets\models\yolov8n-face.onnx") {
             Copy-Item "assets\models\yolov8n-face.onnx" "publish\models\" -Force
@@ -70,7 +95,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Output files:"
-          Get-ChildItem publish -Recurse | Select-Object FullName, Length
+          Get-ChildItem publish -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

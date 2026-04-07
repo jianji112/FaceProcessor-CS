@@ -177,11 +177,23 @@ public class ImageProcessor
     {
         try
         {
+            // 验证图片有效性
+            if (image == null || image.Empty())
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 图片无效，无法保存");
+                return false;
+            }
+
             // 确保输出目录存在
             var dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            if (string.IsNullOrEmpty(dir))
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 创建目录: {dir}");
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 输出目录无效: {outputPath}");
+                return false;
+            }
+            if (!Directory.Exists(dir))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 创建输出目录: {dir}");
                 Directory.CreateDirectory(dir);
             }
 
@@ -192,43 +204,47 @@ public class ImageProcessor
                 "webp" => ".webp",
                 _ => ".png"
             };
+            var finalPath = Path.ChangeExtension(outputPath, ext);
 
-            outputPath = Path.ChangeExtension(outputPath, ext);
-            
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 保存图片: {outputPath}");
-            
-            var parameters = format.ToLower() switch
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 保存图片: {finalPath}, 格式: {format}, 质量: {quality}");
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 图片尺寸: {image.Width}x{image.Height}, 通道: {image.Channels()}");
+
+            // 保存图片
+            bool success;
+            if (format.ToLower() == "png")
             {
-                "jpg" or "jpeg" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
-                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
-                _ => Array.Empty<ImageEncodingParam>()
-            };
+                success = Cv2.ImWrite(finalPath, image);
+            }
+            else
+            {
+                // JPG/WEBP 使用质量参数
+                var param = new ImageEncodingParam(
+                    format.ToLower() == "webp" ? ImwriteFlags.WebPQuality : ImwriteFlags.JpegQuality,
+                    quality);
+                success = Cv2.ImWrite(finalPath, image, new[] { param });
+            }
 
-            var success = Cv2.ImWrite(outputPath, image, parameters);
-            
             if (!success)
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Cv2.ImWrite 返回 false");
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Cv2.ImWrite 返回 false，格式: {format}");
                 return false;
             }
 
-            // 验证文件是否存在
-            if (!File.Exists(outputPath))
+            // 验证文件
+            if (!File.Exists(finalPath))
             {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件保存后不存在: {outputPath}");
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件保存后不存在: {finalPath}");
                 return false;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件保存成功: {outputPath}, 大小: {new FileInfo(outputPath).Length} bytes");
+            var fileSize = new FileInfo(finalPath).Length;
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 保存成功: {finalPath}, 大小: {fileSize / 1024.0:F1} KB");
 
             // 文件大小限制
-            if (maxSizeMB > 0)
+            if (maxSizeMB > 0 && fileSize > maxSizeMB * 1024 * 1024 && quality > 10)
             {
-                var fileInfo = new FileInfo(outputPath);
-                if (fileInfo.Length > maxSizeMB * 1024 * 1024 && quality > 10)
-                {
-                    return Save(image, outputPath, format, quality - 10, maxSizeMB);
-                }
+                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件过大({fileSize / 1024.0:F1}KB)，尝试降低质量...");
+                return Save(image, finalPath, format, quality - 10, maxSizeMB);
             }
 
             return true;

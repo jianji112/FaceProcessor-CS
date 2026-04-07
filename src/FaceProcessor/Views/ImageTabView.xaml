@@ -196,7 +196,7 @@
                 <StackPanel Margin="5">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="处理方式" VerticalAlignment="Center" Width="80" Foreground="#AAAAAA"/>
-                        <ComboBox Name="ModeCombo" Width="120" SelectedIndex="1" Style="{StaticResource ModernCb}">
+                        <ComboBox Name="ModeCombo" Width="120" SelectedIndex="1" Style="{StaticResource ModernCb}" ItemContainerStyle="{StaticResource ModernCbItem}">
                             <ComboBoxItem Content="不处理"/>
                             <ComboBoxItem Content="马赛克"/>
                             <ComboBoxItem Content="高斯模糊"/>
@@ -207,7 +207,7 @@
                         
                         <TextBlock Text="分辨率" VerticalAlignment="Center" Margin="25,0,0,0" 
                                    Width="55" Foreground="#AAAAAA"/>
-                        <ComboBox Name="ResolutionCombo" Width="100" SelectedIndex="0" Style="{StaticResource ModernCb}">
+                        <ComboBox Name="ResolutionCombo" Width="100" SelectedIndex="0" Style="{StaticResource ModernCb}" ItemContainerStyle="{StaticResource ModernCbItem}">
                             <ComboBoxItem Content="不限"/>
                             <ComboBoxItem Content="≤1024px"/>
                             <ComboBoxItem Content="≤2048px"/>
@@ -215,7 +215,7 @@
                         
                         <TextBlock Text="格式" VerticalAlignment="Center" Margin="25,0,0,0" 
                                    Width="40" Foreground="#AAAAAA"/>
-                        <ComboBox Name="FormatCombo" Width="70" SelectedIndex="0" Style="{StaticResource ModernCb}">
+                        <ComboBox Name="FormatCombo" Width="70" SelectedIndex="0" Style="{StaticResource ModernCb}" ItemContainerStyle="{StaticResource ModernCbItem}">
                             <ComboBoxItem Content="PNG"/>
                             <ComboBoxItem Content="JPG"/>
                             <ComboBoxItem Content="WEBP"/>

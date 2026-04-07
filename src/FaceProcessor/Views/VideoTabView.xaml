@@ -184,7 +184,7 @@
             <GroupBox Grid.Row="1" Header="⚙️ 处理设置" Foreground="White" Margin="0,0,0,15">
                 <StackPanel Orientation="Horizontal" Margin="5">
                     <TextBlock Text="处理模式" VerticalAlignment="Center" Width="70" Foreground="#AAAAAA"/>
-                    <ComboBox Name="ModeCombo" Width="100" SelectedIndex="0" Style="{StaticResource ModernCb}">
+                    <ComboBox Name="ModeCombo" Width="100" SelectedIndex="0" Style="{StaticResource ModernCb}" ItemContainerStyle="{StaticResource ModernCbItem}">
                         <ComboBoxItem Content="马赛克"/>
                         <ComboBoxItem Content="高斯模糊"/>
                     </ComboBox>

@@ -50,7 +50,7 @@
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsSelected" Value="True">
                                         <Setter TargetName="Border" Property="Background" Value="#3A3A5A"/>
-                                        <Setter Property="Foreground" Value="#64B5F6"/>
+                                        <Setter TargetName="ContentSite" Property="Foreground" Value="#64B5F6"/>
                                     </Trigger>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="Border" Property="Background" Value="#2F2F50"/>

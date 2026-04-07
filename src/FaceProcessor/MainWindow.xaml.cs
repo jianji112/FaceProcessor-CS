@@ -50,10 +50,13 @@ public partial class MainWindow : Window
         // 尝试多个可能的模型路径
         var possiblePaths = new[]
         {
+            // Caffe 模型（优先）
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "face_detector.caffemodel"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "face_detector.caffemodel"),
+            Path.Combine(Directory.GetCurrentDirectory(), "models", "face_detector.caffemodel"),
+            // ONNX 模型（备选）
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "yolov8n-face.onnx"),
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "yolov8n-face.onnx"),
-            Path.Combine(Directory.GetCurrentDirectory(), "models", "yolov8n-face.onnx"),
-            Path.Combine(Directory.GetCurrentDirectory(), "yolov8n-face.onnx")
         };
 
         foreach (var modelPath in possiblePaths)
@@ -62,8 +65,8 @@ public partial class MainWindow : Window
             {
                 var fileInfo = new FileInfo(modelPath);
                 System.Diagnostics.Debug.WriteLine($"[FaceProcessor] 找到模型: {modelPath}, 大小: {fileInfo.Length} bytes");
-                
-                // 检查文件大小（正常模型应该 > 5MB）
+            
+                // 检查文件大小（Caffe 模型 > 1MB，ONNX 模型 > 5MB）
                 if (fileInfo.Length < 1_000_000)
                 {
                     System.Diagnostics.Debug.WriteLine($"[FaceProcessor] 警告: 模型文件太小，可能损坏");
@@ -73,7 +76,9 @@ public partial class MainWindow : Window
                 try
                 {
                     var detector = new FaceDetector(modelPath, 0.5f, _configManager.Config.UseGpu);
-                    System.Diagnostics.Debug.WriteLine($"[FaceProcessor] 人脸检测器初始化成功");
+                    System.Diagnostics.Debug.WriteLine($"[FaceProcessor] 人脸检测器初始化成功: {modelPath}");
+                    MessageBox.Show($"人脸检测模型加载成功\n模型: {Path.GetFileName(modelPath)}\n大小: {fileInfo.Length / 1024 / 1024:F1} MB", 
+                        "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return detector;
                 }
                 catch (Exception ex)
@@ -85,7 +90,11 @@ public partial class MainWindow : Window
         }
 
         System.Diagnostics.Debug.WriteLine($"[FaceProcessor] 未找到有效的模型文件");
-        MessageBox.Show("未找到人脸检测模型文件 (yolov8n-face.onnx)\n\n人脸检测功能将不可用，请确保 models 文件夹中包含有效的模型文件。", 
+        MessageBox.Show("未找到人脸检测模型文件\n\n" +
+            "请确保 models 文件夹中包含以下文件之一：\n" +
+            "• face_detector.caffemodel + deploy.prototxt\n" +
+            "• yolov8n-face.onnx\n\n" +
+            "人脸检测功能将不可用，图片/视频处理将无效果。", 
             "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
         return null;
     }

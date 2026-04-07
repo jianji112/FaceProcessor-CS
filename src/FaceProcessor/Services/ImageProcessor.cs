@@ -248,7 +248,7 @@ public class ImageProcessor
             var parameters = format.ToLower() switch
             {
                 "jpg" or "jpeg" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
-                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.WebPCompression, quality / 10) },
+                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) }, // WebP 用 JPEG 参数作为替代
                 _ => new[] { new ImageEncodingParam(ImwriteFlags.PngCompression, 6) }
             };
 

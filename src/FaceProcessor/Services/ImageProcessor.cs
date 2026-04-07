@@ -80,33 +80,8 @@ public class ImageProcessor
             var blurred = new Mat();
             Cv2.GaussianBlur(faceRegion, blurred, new Size(blurStrength, blurStrength), 30);
 
-            // 创建椭圆蒙版平滑过渡
-            var mask = new Mat(faceRegion.Height, faceRegion.Width, MatType.CV_32F, Scalar.Black);
-            var center = new Point(faceRegion.Width / 2, faceRegion.Height / 2);
-            var axes = new Size(faceRegion.Width / 2, faceRegion.Height / 2);
-            Cv2.Ellipse(mask, center, axes, 0, 0, 360, Scalar.White, -1);
-            Cv2.GaussianBlur(mask, mask, new Size(51, 51), 0);
-
-            // 混合：用蒙版混合模糊图和原图
-            var maskNormalized = new Mat();
-            mask.ConvertTo(maskNormalized, MatType.CV_32F, 1.0 / 255.0);
-            
-            // 复制模糊区域到结果
-            var faceRegionFloat = new Mat();
-            var blurredFloat = new Mat();
-            faceRegion.ConvertTo(faceRegionFloat, MatType.CV_32FC3);
-            blurred.ConvertTo(blurredFloat, MatType.CV_32FC3);
-            
-            // 用蒙版混合
-            var mask3Channel = new Mat();
-            Cv2.Merge(new[] { maskNormalized, maskNormalized, maskNormalized }, mask3Channel);
-            
-            var resultFloat = new Mat();
-            Cv2.Multiply(blurredFloat, mask3Channel, blurredFloat);
-            Cv2.Multiply(faceRegionFloat, new Scalar(1.0, 1.0, 1.0) - mask3Channel, faceRegionFloat);
-            Cv2.Add(blurredFloat, faceRegionFloat, resultFloat);
-            
-            resultFloat.ConvertTo(faceRegion, MatType.CV_8UC3);
+            // 简单混合：直接用模糊结果替换
+            blurred.CopyTo(faceRegion);
         }
 
         return result;
@@ -140,36 +115,9 @@ public class ImageProcessor
                 Cv2.Line(mesh, new Point(i + height, 0), new Point(i, height), new Scalar(20, 20, 20), lineWidth);
             }
 
-            // 添加噪点
-            var noise = new Mat();
-            Cv2.Randn(noise, new Scalar(0, 0, 0), new Scalar(30, 30, 30));
-            Cv2.Add(mesh, noise, mesh);
-
-            // 创建蒙版
-            var mask = new Mat(height, width, MatType.CV_32F, Scalar.Black);
-            Cv2.Ellipse(mask, new Point(width / 2, height / 2), new Size(width / 2, height / 2), 0, 0, 360, Scalar.White, -1);
-            Cv2.GaussianBlur(mask, mask, new Size(51, 51), 0);
-
+            // 简单混合
             var faceRegion = result[new Rect(x1, y1, width, height)];
-            var mask3 = new Mat();
-            Cv2.Merge(new[] { mask, mask, mask }, mask3);
-
-            // 混合：用蒙版混合网格和原图
-            var faceRegionFloat = new Mat();
-            var meshFloat = new Mat();
-            faceRegion.ConvertTo(faceRegionFloat, MatType.CV_32FC3, 1.0 / 255.0);
-            mesh.ConvertTo(meshFloat, MatType.CV_32FC3, 1.0 / 255.0);
-            
-            var mask3Float = mask3.ToMat(MatType.CV_32F, 1.0 / 255.0);
-            var mask3Channel = new Mat();
-            Cv2.Merge(new[] { mask3Float, mask3Float, mask3Float }, mask3Channel);
-            
-            var resultFloat = new Mat();
-            Cv2.Multiply(meshFloat, mask3Channel, meshFloat, 0.7);
-            Cv2.Multiply(faceRegionFloat, new Scalar(1.0, 1.0, 1.0) - mask3Channel, faceRegionFloat, 1.0);
-            Cv2.Add(meshFloat, faceRegionFloat, resultFloat);
-            
-            resultFloat.ConvertTo(faceRegion, MatType.CV_8UC3, 255.0);
+            Cv2.AddWeighted(mesh, 0.7, faceRegion, 0.3, 0, faceRegion);
         }
 
         return result;
@@ -248,8 +196,8 @@ public class ImageProcessor
             var parameters = format.ToLower() switch
             {
                 "jpg" or "jpeg" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
-                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) }, // WebP 用 JPEG 参数作为替代
-                _ => new[] { new ImageEncodingParam(ImwriteFlags.PngCompression, 6) }
+                "webp" => new[] { new ImageEncodingParam(ImwriteFlags.JpegQuality, quality) },
+                _ => Array.Empty<ImageEncodingParam>()
             };
 
             Cv2.ImWrite(outputPath, image, parameters);
@@ -260,7 +208,6 @@ public class ImageProcessor
                 var fileInfo = new FileInfo(outputPath);
                 if (fileInfo.Length > maxSizeMB * 1024 * 1024 && quality > 10)
                 {
-                    // 递减质量重新保存
                     return Save(image, outputPath, format, quality - 10, maxSizeMB);
                 }
             }

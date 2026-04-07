@@ -89,16 +89,13 @@
                             <ToggleButton x:Name="ToggleButton"
                                           ClickMode="Press"
                                           Focusable="False"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          Background="Transparent"
-                                          BorderThickness="0"/>
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
                             <Popup x:Name="Popup"
                                    Placement="Bottom"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
                                    Focusable="False"
-                                   PopupAnimation="Slide"
-                                   BorderThickness="0">
+                                   PopupAnimation="Slide">
                                 <Border Background="#2A2A4A"
                                         BorderBrush="#404060"
                                         BorderThickness="1"

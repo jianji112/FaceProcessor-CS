@@ -70,11 +70,21 @@ public sealed class LogCollector : TraceListener
     public static void Install()
     {
         // 移除旧实例（防止重复）
-        var existing = Trace.Listeners.OfType<LogCollector>().FirstOrDefault();
-        if (existing != null)
-            Trace.Listeners.Remove(existing);
+        var existingInDebug = Debug.Listeners.OfType<LogCollector>().FirstOrDefault();
+        if (existingInDebug != null)
+            Debug.Listeners.Remove(existingInDebug);
 
+        var existingInTrace = Trace.Listeners.OfType<LogCollector>().FirstOrDefault();
+        if (existingInTrace != null)
+            Trace.Listeners.Remove(existingInTrace);
+
+        // 添加到 Debug.Listeners（Debug.WriteLine 使用这个）
+        Debug.Listeners.Add(Instance);
+
+        // 同时添加到 Trace.Listeners（Trace.WriteLine 使用这个）
         Trace.Listeners.Add(Instance);
+
+        System.Diagnostics.Debug.WriteLine("[LogCollector] 已安装到 Debug.Listeners 和 Trace.Listeners");
     }
 }
 

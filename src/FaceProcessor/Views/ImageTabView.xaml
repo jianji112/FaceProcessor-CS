@@ -3,6 +3,66 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     
+    <UserControl.Resources>
+        <LinearGradientBrush x:Key="PrimaryBtnGrad" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#2196F3" Offset="0"/>
+            <GradientStop Color="#21CBF3" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="DangerBtnGrad" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#F44336" Offset="0"/>
+            <GradientStop Color="#E91E63" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="SuccessBtnGrad" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#4CAF50" Offset="0"/>
+            <GradientStop Color="#8BC34A" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="ProgressGrad" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#2196F3" Offset="0"/>
+            <GradientStop Color="#9C27B0" Offset="0.5"/>
+            <GradientStop Color="#E91E63" Offset="1"/>
+        </LinearGradientBrush>
+        
+        <Style TargetType="Button" x:Key="PrimaryBtn">
+            <Setter Property="Background" Value="{StaticResource PrimaryBtnGrad}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style TargetType="Button" x:Key="SuccessBtn" BasedOn="{StaticResource PrimaryBtn}">
+            <Setter Property="Background" Value="{StaticResource SuccessBtnGrad}"/>
+        </Style>
+        
+        <Style TargetType="Button" x:Key="DangerBtn" BasedOn="{StaticResource PrimaryBtn}">
+            <Setter Property="Background" Value="{StaticResource DangerBtnGrad}"/>
+        </Style>
+        
+        <Style TargetType="ComboBox" x:Key="ModernCb">
+            <Setter Property="Background" Value="#2A2A4A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#404060"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        
+        <Style TargetType="TextBox" x:Key="ModernTb">
+            <Setter Property="Background" Value="#2A2A4A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#404060"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="20">
             <Grid.RowDefinitions>
@@ -13,15 +73,15 @@
             </Grid.RowDefinitions>
 
             <!-- 文件选择区 -->
-            <GroupBox Grid.Row="0" Header="📂 文件列表" Margin="0,0,0,15">
+            <GroupBox Grid.Row="0" Header="📂 文件列表" Foreground="White" Margin="0,0,0,15">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="5">
                         <Button Content="📷 选择图片" Click="SelectImages_Click" 
-                                Style="{DynamicResource PrimaryButton}" Margin="0,0,10,0"/>
+                                Style="{StaticResource PrimaryBtn}" Margin="0,0,10,0"/>
                         <Button Content="📁 选择文件夹" Click="SelectFolder_Click" 
-                                Style="{DynamicResource PrimaryButton}" Margin="0,0,10,0"/>
+                                Style="{StaticResource PrimaryBtn}" Margin="0,0,10,0"/>
                         <Button Content="🗑️ 清空" Click="ClearFiles_Click" 
-                                Style="{DynamicResource DangerButton}"/>
+                                Style="{StaticResource DangerBtn}"/>
                     </StackPanel>
                     <Border Background="#2A2A4A" CornerRadius="8" Margin="5" Padding="5">
                         <ListBox Name="ImageListBox" Height="120" Background="Transparent" 
@@ -32,12 +92,11 @@
             </GroupBox>
 
             <!-- 处理设置区 -->
-            <GroupBox Grid.Row="1" Header="⚙️ 处理设置" Margin="0,0,0,15">
+            <GroupBox Grid.Row="1" Header="⚙️ 处理设置" Foreground="White" Margin="0,0,0,15">
                 <StackPanel Margin="5">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="处理方式" VerticalAlignment="Center" Width="80" Foreground="#AAAAAA"/>
-                        <ComboBox Name="ModeCombo" Width="120" SelectedIndex="1" 
-                                  Style="{DynamicResource ModernComboBox}">
+                        <ComboBox Name="ModeCombo" Width="120" SelectedIndex="1" Style="{StaticResource ModernCb}">
                             <ComboBoxItem Content="不处理"/>
                             <ComboBoxItem Content="马赛克"/>
                             <ComboBoxItem Content="高斯模糊"/>
@@ -48,8 +107,7 @@
                         
                         <TextBlock Text="分辨率" VerticalAlignment="Center" Margin="25,0,0,0" 
                                    Width="55" Foreground="#AAAAAA"/>
-                        <ComboBox Name="ResolutionCombo" Width="100" SelectedIndex="0" 
-                                  Style="{DynamicResource ModernComboBox}">
+                        <ComboBox Name="ResolutionCombo" Width="100" SelectedIndex="0" Style="{StaticResource ModernCb}">
                             <ComboBoxItem Content="不限"/>
                             <ComboBoxItem Content="≤1024px"/>
                             <ComboBoxItem Content="≤2048px"/>
@@ -57,8 +115,7 @@
                         
                         <TextBlock Text="格式" VerticalAlignment="Center" Margin="25,0,0,0" 
                                    Width="40" Foreground="#AAAAAA"/>
-                        <ComboBox Name="FormatCombo" Width="70" SelectedIndex="0" 
-                                  Style="{DynamicResource ModernComboBox}">
+                        <ComboBox Name="FormatCombo" Width="70" SelectedIndex="0" Style="{StaticResource ModernCb}">
                             <ComboBoxItem Content="PNG"/>
                             <ComboBoxItem Content="JPG"/>
                             <ComboBoxItem Content="WEBP"/>
@@ -77,7 +134,7 @@
             </GroupBox>
 
             <!-- 输出设置区 -->
-            <GroupBox Grid.Row="2" Header="📁 输出设置" Margin="0,0,0,15">
+            <GroupBox Grid.Row="2" Header="📁 输出设置" Foreground="White" Margin="0,0,0,15">
                 <StackPanel Margin="5">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <RadioButton Name="CustomPathRadio" Content="自定义目录" 
@@ -86,12 +143,11 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBox Name="OutputPathTextBox" Width="400" 
-                                 Style="{DynamicResource ModernTextBox}" Margin="0,0,10,0"/>
-                        <Button Content="浏览..." Click="BrowseOutput_Click" 
-                                Style="{DynamicResource PrimaryButton}"/>
+                                 Style="{StaticResource ModernTb}" Margin="0,0,10,0"/>
+                        <Button Content="浏览..." Click="BrowseOutput_Click" Style="{StaticResource PrimaryBtn}"/>
                     </StackPanel>
                     <TextBox Name="SubfolderNameTextBox" Width="200" Text="processed" 
-                             Style="{DynamicResource ModernTextBox}" Margin="0,10,0,0"
+                             Style="{StaticResource ModernTb}" Margin="0,10,0,0"
                              IsEnabled="{Binding IsChecked, ElementName=SubfolderRadio}"/>
                 </StackPanel>
             </GroupBox>
@@ -100,13 +156,13 @@
             <StackPanel Grid.Row="3" Margin="0,10,0,0">
                 <Border Background="#2A2A4A" CornerRadius="10" Padding="3" Margin="0,0,0,15">
                     <ProgressBar Name="ProgressBar" Height="20" Background="Transparent" 
-                                 Foreground="{DynamicResource ProgressBarGradient}" Value="0"
+                                 Foreground="{StaticResource ProgressGrad}" Value="0"
                                  BorderThickness="0"/>
                 </Border>
                 <TextBlock Name="StatusText" Text="就绪" Foreground="#CCCCCC" 
                            FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,15"/>
                 <Button Name="ProcessBtn" Content="▶ 开始处理" 
-                        Click="Process_Click" Style="{DynamicResource SuccessButton}"
+                        Click="Process_Click" Style="{StaticResource SuccessBtn}"
                         HorizontalAlignment="Center" Padding="40,15" FontSize="16"/>
             </StackPanel>
         </Grid>

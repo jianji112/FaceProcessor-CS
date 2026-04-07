@@ -4,12 +4,7 @@
         xmlns:views="clr-namespace:FaceProcessor.Views"
         Title="Face Processor" Height="780" Width="1000"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BackgroundGradient}"
-        AllowsTransparency="False">
-    
-    <Window.Effect>
-        <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5"/>
-    </Window.Effect>
+        Background="#1A1A2E">
     
     <Grid Margin="25">
         <Grid.RowDefinitions>
@@ -22,7 +17,7 @@
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
             <TextBlock Text="🔷" FontSize="32" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <TextBlock Text="Face Processor" FontSize="32" FontWeight="Bold" 
-                       Foreground="{DynamicResource TitleGradient}" VerticalAlignment="Center"/>
+                       Foreground="#64B5F6" VerticalAlignment="Center"/>
             <TextBlock Text="v1.0" FontSize="14" Foreground="#888888" 
                        VerticalAlignment="Bottom" Margin="10,0,0,5"/>
         </StackPanel>
@@ -30,19 +25,19 @@
         <Separator Grid.Row="1" Margin="0,0,0,15" Background="#404060" Height="1"/>
 
         <!-- 标签页 -->
-        <TabControl Grid.Row="2" Name="MainTabControl" Background="Transparent" 
+        <TabControl Grid.Row="2" Name="MainTabControl" Background="#1E1E32" 
                      BorderThickness="0" Padding="0">
-            <TabItem Header="📷 图片处理">
+            <TabItem Header="📷 图片处理" Background="#252540" Foreground="#AAAAAA">
                 <Grid Name="ImageTabContainer" Margin="0,10,0,0"/>
             </TabItem>
-            <TabItem Header="🎬 视频处理">
+            <TabItem Header="🎬 视频处理" Background="#252540" Foreground="#AAAAAA">
                 <Grid Name="VideoTabContainer" Margin="0,10,0,0"/>
             </TabItem>
-            <TabItem Header="ℹ️ 关于">
+            <TabItem Header="ℹ️ 关于" Background="#252540" Foreground="#AAAAAA">
                 <ScrollViewer Margin="20">
                     <StackPanel>
                         <TextBlock Text="Face Processor" FontSize="24" FontWeight="Bold" 
-                                   Foreground="{DynamicResource TitleGradient}"/>
+                                   Foreground="#64B5F6"/>
                         <TextBlock Text="人脸处理工具 - 支持 GPU 加速" FontSize="14" 
                                    Foreground="#AAAAAA" Margin="0,5,0,20"/>
                         

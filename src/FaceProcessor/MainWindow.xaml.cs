@@ -16,11 +16,15 @@ public partial class MainWindow : Window
     
     private ImageTabView? _imageTab;
     private VideoTabView? _videoTab;
+    private LogTabView? _logTab;
     private readonly DispatcherTimer _signatureTimer;
 
     public MainWindow()
     {
         InitializeComponent();
+        
+        // 安装全局日志收集器（必须最先）
+        LogCollector.Install();
         
         _configManager = new ConfigManager();
         
@@ -103,9 +107,11 @@ public partial class MainWindow : Window
     {
         _imageTab = new ImageTabView(_configManager, _detector);
         _videoTab = new VideoTabView(_configManager, _videoProcessor);
+        _logTab = new LogTabView();
         
         ImageTabContainer.Children.Add(_imageTab);
         VideoTabContainer.Children.Add(_videoTab);
+        LogTabContainer.Children.Add(_logTab);
         
         // 更新 GPU 状态
         var (available, info) = FaceDetector.GetGpuStatus();

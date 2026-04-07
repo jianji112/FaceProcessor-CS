@@ -66,12 +66,11 @@ public partial class VideoTabView : UserControl
         if (dlg.ShowDialog() == true)
         {
             VideoPathTextBox.Text = dlg.FileName;
-            if (string.IsNullOrEmpty(OutputPathTextBox.Text))
-            {
-                var dir = Path.GetDirectoryName(dlg.FileName);
-                var name = Path.GetFileNameWithoutExtension(dlg.FileName);
-                OutputPathTextBox.Text = Path.Combine(dir!, $"{name}_processed.mp4");
-            }
+            // Always clear output path when input changes to avoid stale filename
+            OutputPathTextBox.Text = "";
+            var dir = Path.GetDirectoryName(dlg.FileName);
+            var name = Path.GetFileNameWithoutExtension(dlg.FileName);
+            OutputPathTextBox.Text = Path.Combine(dir!, $"{name}_processed.mp4");
         }
     }
 
@@ -80,6 +79,7 @@ public partial class VideoTabView : UserControl
         var dlg = new OpenFolderDialog();
         if (dlg.ShowDialog() == true)
         {
+            // Always use the currently selected input video name (not a stale one)
             var name = string.IsNullOrEmpty(VideoPathTextBox.Text)
                 ? "output"
                 : Path.GetFileNameWithoutExtension(VideoPathTextBox.Text);

@@ -124,6 +124,12 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="📋 日志" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+                </TabItem.Header>
+                <Grid Name="LogTabContainer" Margin="0,10,0,0"/>
+            </TabItem>
         </TabControl>
         
         <!-- 右下角署名（60秒后自动消失） -->

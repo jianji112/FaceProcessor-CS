@@ -27,13 +27,47 @@
         <!-- 标签页 -->
         <TabControl Grid.Row="2" Name="MainTabControl" Background="#1E1E32" 
                      BorderThickness="0" Padding="0">
-            <TabItem Header="📷 图片处理" Background="#252540" Foreground="#AAAAAA">
+            <TabControl.Resources>
+                <!-- TabItem 基础样式 -->
+                <Style TargetType="TabItem">
+                    <Setter Property="Background" Value="#252540"/>
+                    <Setter Property="Foreground" Value="#AAAAAA"/>
+                    <Setter Property="Padding" Value="15,8"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border x:Name="Border"
+                                        Background="{TemplateBinding Background}"
+                                        BorderThickness="0"
+                                        CornerRadius="8,8,0,0"
+                                        Margin="0,0,2,0"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter x:Name="ContentSite"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center"
+                                                      ContentSource="Header"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#3A3A5A"/>
+                                        <Setter Property="Foreground" Value="#64B5F6"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#2F2F50"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
+            <TabItem Header="📷 图片处理">
                 <Grid Name="ImageTabContainer" Margin="0,10,0,0"/>
             </TabItem>
-            <TabItem Header="🎬 视频处理" Background="#252540" Foreground="#AAAAAA">
+            <TabItem Header="🎬 视频处理">
                 <Grid Name="VideoTabContainer" Margin="0,10,0,0"/>
             </TabItem>
-            <TabItem Header="ℹ️ 关于" Background="#252540" Foreground="#AAAAAA">
+            <TabItem Header="ℹ️ 关于">
                 <ScrollViewer Margin="20">
                     <StackPanel>
                         <TextBlock Text="Face Processor" FontSize="24" FontWeight="Bold" 

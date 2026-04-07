@@ -87,14 +87,26 @@ public class ImageProcessor
             Cv2.Ellipse(mask, center, axes, 0, 0, 360, Scalar.White, -1);
             Cv2.GaussianBlur(mask, mask, new Size(51, 51), 0);
 
-            // 混合原图和模糊
-            var mask3 = new Mat();
-            Cv2.Merge(new[] { mask, mask, mask }, mask3);
-            var blended = new Mat();
-            Cv2.AddWeighted(blurred, 1.0, faceRegion, 0.0, 0, blended);
-            Cv2.AddWeighted(blended, 1.0, faceRegion, 0.0, 0, blended, -1, mask3);
+            // 混合：用蒙版混合模糊图和原图
+            var maskNormalized = new Mat();
+            mask.ConvertTo(maskNormalized, MatType.CV_32F, 1.0 / 255.0);
             
-            blended.CopyTo(faceRegion);
+            // 复制模糊区域到结果
+            var faceRegionFloat = new Mat();
+            var blurredFloat = new Mat();
+            faceRegion.ConvertTo(faceRegionFloat, MatType.CV_32FC3);
+            blurred.ConvertTo(blurredFloat, MatType.CV_32FC3);
+            
+            // 用蒙版混合
+            var mask3Channel = new Mat();
+            Cv2.Merge(new[] { maskNormalized, maskNormalized, maskNormalized }, mask3Channel);
+            
+            var resultFloat = new Mat();
+            Cv2.Multiply(blurredFloat, mask3Channel, blurredFloat);
+            Cv2.Multiply(faceRegionFloat, new Scalar(1.0, 1.0, 1.0) - mask3Channel, faceRegionFloat);
+            Cv2.Add(blurredFloat, faceRegionFloat, resultFloat);
+            
+            resultFloat.ConvertTo(faceRegion, MatType.CV_8UC3);
         }
 
         return result;
@@ -142,11 +154,22 @@ public class ImageProcessor
             var mask3 = new Mat();
             Cv2.Merge(new[] { mask, mask, mask }, mask3);
 
-            // 混合
-            var blended = new Mat();
-            Cv2.AddWeighted(mesh, 0.7, faceRegion, 0.3, 0, blended);
-            Cv2.AddWeighted(blended, 1.0, faceRegion, 0.0, 0, blended, -1, mask3);
-            blended.CopyTo(faceRegion);
+            // 混合：用蒙版混合网格和原图
+            var faceRegionFloat = new Mat();
+            var meshFloat = new Mat();
+            faceRegion.ConvertTo(faceRegionFloat, MatType.CV_32FC3, 1.0 / 255.0);
+            mesh.ConvertTo(meshFloat, MatType.CV_32FC3, 1.0 / 255.0);
+            
+            var mask3Float = mask3.ToMat(MatType.CV_32F, 1.0 / 255.0);
+            var mask3Channel = new Mat();
+            Cv2.Merge(new[] { mask3Float, mask3Float, mask3Float }, mask3Channel);
+            
+            var resultFloat = new Mat();
+            Cv2.Multiply(meshFloat, mask3Channel, meshFloat, 0.7);
+            Cv2.Multiply(faceRegionFloat, new Scalar(1.0, 1.0, 1.0) - mask3Channel, faceRegionFloat, 1.0);
+            Cv2.Add(meshFloat, faceRegionFloat, resultFloat);
+            
+            resultFloat.ConvertTo(faceRegion, MatType.CV_8UC3, 255.0);
         }
 
         return result;

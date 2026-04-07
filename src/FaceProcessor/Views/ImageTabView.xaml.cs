@@ -141,6 +141,7 @@ public partial class ImageTabView : UserControl
 
                     // 检测人脸
                     var faces = _detector?.Detect(img) ?? new List<FaceRect>();
+                    System.Diagnostics.Debug.WriteLine($"[ImageTab] 检测到 {faces.Count} 个人脸");
                     
                     // 处理
                     var options = new ProcessOptions 
@@ -178,13 +179,17 @@ public partial class ImageTabView : UserControl
                     var outputPath = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(inputPath) + 
                         GetExtension(format));
                     
+                    System.Diagnostics.Debug.WriteLine($"[ImageTab] 输出路径: {outputPath}");
+                    
                     // 保存
                     if (_processor.Save(processed, outputPath, format, quality, maxSize))
                     {
+                        System.Diagnostics.Debug.WriteLine($"[ImageTab] 保存成功: {outputPath}");
                         success++;
                     }
                     else
                     {
+                        System.Diagnostics.Debug.WriteLine($"[ImageTab] 保存失败: {outputPath}");
                         failed++;
                     }
                 }

@@ -47,12 +47,12 @@ public class FaceDetector : IDisposable
                 System.Diagnostics.Debug.WriteLine($"[FaceDetector] 输入数量: {_onnxSession.InputMetadata.Count}");
                 foreach (var input in _onnxSession.InputMetadata)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[FaceDetector]   输入: name={input.Name}, shape=[{string.Join(",", input.Dimensions)}], type={input.ElementType}");
+                    System.Diagnostics.Debug.WriteLine($"[FaceDetector]   输入: name={input.Key}, shape=[{string.Join(",", input.Value.Dimensions)}], type={input.Value.ElementDataType}");
                 }
                 System.Diagnostics.Debug.WriteLine($"[FaceDetector] 输出数量: {_onnxSession.OutputMetadata.Count}");
                 foreach (var output in _onnxSession.OutputMetadata)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[FaceDetector]   输出: name={output.Name}, shape=[{string.Join(",", output.Dimensions)}], type={output.ElementType}");
+                    System.Diagnostics.Debug.WriteLine($"[FaceDetector]   输出: name={output.Key}, shape=[{string.Join(",", output.Value.Dimensions)}], type={output.Value.ElementDataType}");
                 }
             }
             catch (Exception ex)

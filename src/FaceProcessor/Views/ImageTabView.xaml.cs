@@ -139,9 +139,13 @@ public partial class ImageTabView : UserControl
                         continue;
                     }
 
-                    // 检测人脸
-                    var faces = _detector?.Detect(img) ?? new List<FaceRect>();
-                    System.Diagnostics.Debug.WriteLine($"[ImageTab] 检测到 {faces.Count} 个人脸");
+                    // 检测人脸（如果检测器不可用，faces为空）
+                    var faces = new List<FaceRect>();
+                    if (_detector != null)
+                    {
+                        faces = _detector.Detect(img);
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[ImageTab] 检测器状态: {(_detector != null ? "可用" : "不可用")}, 检测到 {faces.Count} 个人脸");
                     
                     // 处理
                     var options = new ProcessOptions 

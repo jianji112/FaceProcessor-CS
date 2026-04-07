@@ -18,7 +18,16 @@ public class ImageProcessor
     public Mat Process(Mat image, List<FaceRect> faces, ProcessMode mode, ProcessOptions? options = null)
     {
         options ??= new ProcessOptions();
-        
+
+        System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Process调用: mode={mode}, faces.Count={faces.Count}");
+
+        // 如果没有人脸或选择"不处理"，返回原图
+        if (faces == null || faces.Count == 0 || mode == ProcessMode.None)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 返回原图（无人脸或不处理）");
+            return image.Clone();
+        }
+
         return mode switch
         {
             ProcessMode.Mosaic => ApplyMosaic(image, faces, options.BlockSize),
@@ -26,7 +35,7 @@ public class ImageProcessor
             ProcessMode.BlackMesh => ApplyBlackMesh(image, faces),
             ProcessMode.Grid => ApplyGrid(image, faces),
             ProcessMode.Split => ApplySplit(image, faces, options),
-            _ => image
+            _ => image.Clone()
         };
     }
 

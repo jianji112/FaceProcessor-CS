@@ -1,82 +1,64 @@
-# Face Processor (C# / WPF)
+# FaceProcessor
 
-人脸处理工具，支持图片和视频人脸打码。
+`FaceProcessor` is a .NET 8 / WPF desktop app for local face processing in images and videos.
 
-## 技术栈
+Current version: `v1.0.1`
 
-- **UI 框架**: WPF (.NET 8)
-- **图像处理**: OpenCvSharp4
-- **人脸检测**: ONNX Runtime + YOLOv8-Face
-- **MVVM**: CommunityToolkit.Mvvm
+## Stack
 
-## 功能
+- .NET 8
+- WPF
+- OpenCvSharp4
+- ONNX Runtime
+- Xabe.FFmpeg
 
-### 图片处理
-- 马赛克
-- 高斯模糊
-- 黑丝网格
-- 网格线
-- 拆分图
+## Features
 
-### 视频处理
-- 逐帧人脸检测
-- 马赛克/模糊
-- 保留音频
+- Image processing: mosaic, blur, black mesh, grid, split mode
+- Video processing: frame-by-frame face detection and masking
+- Optional GPU inference when the local runtime supports it
+- Audio retention during video export
 
-## 本地开发
+## Kept Project Layout
 
-```bash
-# 安装 .NET 8 SDK
-# 下载: https://dotnet.microsoft.com/download/dotnet/8.0
+```text
+.
+|-- FaceProcessor.sln
+|-- README.md
+|-- assets/
+|   `-- models/
+|-- src/
+|   `-- FaceProcessor/
+`-- .github/
+```
 
-# 还原依赖
+Temporary publish output, reverse-engineering artifacts, local tools, and build output are intentionally not kept in the repo.
+
+## Models
+
+Source model files live in `assets/models/`.
+
+During build, these files are copied into the app output under `models/`:
+
+- `face_detector.caffemodel`
+- `deploy.prototxt`
+- `yolov8n-face.onnx` if you place one in `assets/models/`
+
+## Build
+
+```powershell
 dotnet restore
-
-# 运行
-dotnet run --project src/FaceProcessor
-
-# 发布单文件 EXE
-dotnet publish src/FaceProcessor/FaceProcessor.csproj \
-  -c Release -r win-x64 --self-contained true \
-  -p:PublishSingleFile=true \
-  -o ./publish
+dotnet build .\FaceProcessor.sln -c Release
 ```
 
-## ONNX 模型
+## Run
 
-需要下载 YOLOv8-Face 模型到 `assets/models/yolov8n-face.onnx`:
-
-```bash
-# 从 Hugging Face 下载
-curl -L -o assets/models/yolov8n-face.onnx \
-  "https://huggingface.co/Nick3151/yolov8n-face/resolve/main/yolov8n-face.onnx"
+```powershell
+dotnet run --project .\src\FaceProcessor\FaceProcessor.csproj
 ```
 
-## 对比 Python 版
+## Publish
 
-| | Python 版 | C# 版 |
-|---|---|---|
-| 打包体积 | ~500MB | ~100MB |
-| 启动速度 | 慢 | 快 |
-| 依赖管理 | pip 易冲突 | NuGet 稳定 |
-| 打包可靠性 | PyInstaller 问题多 | 单文件 EXE |
-
-## 项目结构
-
-```
-FaceProcessor/
-├── FaceProcessor.sln
-├── src/FaceProcessor/
-│   ├── App.xaml(.cs)
-│   ├── MainWindow.xaml(.cs)
-│   ├── Models/
-│   │   └── Models.cs
-│   └── Services/
-│       ├── ConfigManager.cs
-│       ├── FaceDetector.cs
-│       ├── ImageProcessor.cs
-│       └── VideoProcessor.cs
-├── assets/models/
-│   └── yolov8n-face.onnx
-└── .github/workflows/build.yml
+```powershell
+dotnet publish .\src\FaceProcessor\FaceProcessor.csproj -c Release -r win-x64 --self-contained true -o .\publish
 ```

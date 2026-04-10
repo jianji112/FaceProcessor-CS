@@ -1,0 +1,22 @@
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using System.Windows.Resources;
+
+[assembly: AssemblyAssociatedContentFile("deploy.prototxt")]
+[assembly: AssemblyAssociatedContentFile("face_detector.caffemodel")]
+[assembly: AssemblyAssociatedContentFile("haarcascade_frontalface_default.xml")]
+[assembly: AssemblyAssociatedContentFile("directml.dll")]
+[assembly: AssemblyAssociatedContentFile("directml.pdb")]
+[assembly: AssemblyAssociatedContentFile("directml.debug.dll")]
+[assembly: AssemblyAssociatedContentFile("directml.debug.pdb")]
+[assembly: AssemblyCompany("FaceProcessor")]
+[assembly: AssemblyConfiguration("Release")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyInformationalVersion("1.0.0+b1fcc3a1e2ddfb88b193ac72fd280b0f362a4779")]
+[assembly: AssemblyProduct("FaceProcessor")]
+[assembly: AssemblyTitle("FaceProcessor")]
+[assembly: TargetPlatform("Windows7.0")]
+[assembly: SupportedOSPlatform("Windows7.0")]
+[assembly: AssemblyVersion("1.0.0.0")]

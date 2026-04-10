@@ -1,0 +1,9 @@
+.dotnet8/
+.tools/
+**/bin/
+**/obj/
+artifacts/publish-local-dump/
+artifacts/FaceProcessor-win-*/
+publish/
+publish-local/
+publish-local.zip

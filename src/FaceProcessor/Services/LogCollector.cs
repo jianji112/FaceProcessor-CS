@@ -1,94 +1,114 @@
+#define TRACE
+using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Windows;
 
 namespace FaceProcessor.Services;
 
-/// <summary>全局 Debug.WriteLine 日志收集器（单例）</summary>
 public sealed class LogCollector : TraceListener
 {
-    public static LogCollector Instance { get; } = new();
+	private const int MaxEntries = 2000;
 
-    /// <summary>日志条目集合，UI 绑定到此</summary>
-    public ObservableCollection<LogEntry> Entries { get; } = new();
+	private static readonly object FileLock = new object();
 
-    /// <summary>最大保留条数，防止内存溢出</summary>
-    private const int MaxEntries = 2000;
+	public static LogCollector Instance { get; } = new LogCollector();
 
-    private LogCollector() { }
+	public ObservableCollection<LogEntry> Entries { get; } = new ObservableCollection<LogEntry>();
 
-    public override void Write(string? message)
-    {
-        if (string.IsNullOrEmpty(message)) return;
-        Append(message, null);
-    }
+	public static string LogFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "faceprocessor.log");
 
-    public override void WriteLine(string? message)
-    {
-        if (string.IsNullOrEmpty(message)) return;
-        Append(message, null);
-    }
+	private LogCollector()
+	{
+	}
 
-    public override void Write(string? message, string? category)
-    {
-        if (string.IsNullOrEmpty(message)) return;
-        Append(message, category);
-    }
+	public override void Write(string? message)
+	{
+		if (!string.IsNullOrWhiteSpace(message))
+		{
+			Append(message, null);
+		}
+	}
 
-    public override void WriteLine(string? message, string? category)
-    {
-        if (string.IsNullOrEmpty(message)) return;
-        Append(message, category);
-    }
+	public override void WriteLine(string? message)
+	{
+		if (!string.IsNullOrWhiteSpace(message))
+		{
+			Append(message, null);
+		}
+	}
 
-    private void Append(string message, string? category)
-    {
-        var entry = new LogEntry
-        {
-            Time = DateTime.Now,
-            Category = category,
-            Message = message
-        };
+	public override void Write(string? message, string? category)
+	{
+		if (!string.IsNullOrWhiteSpace(message))
+		{
+			Append(message, category);
+		}
+	}
 
-        // 线程安全地添加
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-        {
-            Entries.Add(entry);
+	public override void WriteLine(string? message, string? category)
+	{
+		if (!string.IsNullOrWhiteSpace(message))
+		{
+			Append(message, category);
+		}
+	}
 
-            // 超量时删掉最旧的
-            while (Entries.Count > MaxEntries)
-                Entries.RemoveAt(0);
-        });
-    }
+	private void Append(string message, string? category)
+	{
+		LogEntry entry = new LogEntry
+		{
+			Time = DateTime.Now,
+			Category = category,
+			Message = message
+		};
+		WriteToFile(entry.Formatted);
+		(Application.Current?.Dispatcher)?.BeginInvoke((Action)delegate
+		{
+			Entries.Add(entry);
+			while (Entries.Count > 2000)
+			{
+				Entries.RemoveAt(0);
+			}
+		});
+	}
 
-    /// <summary>清空所有日志</summary>
-    public void Clear()
-    {
-        System.Windows.Application.Current?.Dispatcher.Invoke(Entries.Clear);
-    }
+	private static void WriteToFile(string line)
+	{
+		try
+		{
+			string directory = Path.GetDirectoryName(LogFilePath);
+			if (!string.IsNullOrWhiteSpace(directory))
+			{
+				Directory.CreateDirectory(directory);
+			}
+			lock (FileLock)
+			{
+				File.AppendAllText(LogFilePath, line + Environment.NewLine, Encoding.UTF8);
+			}
+		}
+		catch
+		{
+		}
+	}
 
-    /// <summary>安装到 Trace 列表（应用启动时调用一次）</summary>
-    public static void Install()
-    {
-        // 移除旧实例（防止重复）
-        var existingInTrace = Trace.Listeners.OfType<LogCollector>().FirstOrDefault();
-        if (existingInTrace != null)
-            Trace.Listeners.Remove(existingInTrace);
+	public void Clear()
+	{
+		Application.Current?.Dispatcher.Invoke(Entries.Clear);
+	}
 
-        // 添加到 Trace.Listeners（Trace.WriteLine 使用这个）
-        // 注意：Debug.Listeners 在 .NET 8/Core 下不存在，只能用 Trace.Listeners
-        Trace.Listeners.Add(Instance);
-
-        Trace.WriteLine("[LogCollector] 已安装到 Trace.Listeners");
-    }
-}
-
-/// <summary>单条日志条目</summary>
-public class LogEntry
-{
-    public DateTime Time { get; set; } = DateTime.Now;
-    public string? Category { get; set; }
-    public string Message { get; set; } = "";
-
-    public string Formatted =>
-        $"[{Time:HH:mm:ss}] {(string.IsNullOrEmpty(Category) ? "" : $"[{Category}] ")}{Message}";
+	public static void Install()
+	{
+		LogCollector existing = Trace.Listeners.OfType<LogCollector>().FirstOrDefault();
+		if (existing != null)
+		{
+			Trace.Listeners.Remove(existing);
+		}
+		Trace.AutoFlush = true;
+		Trace.Listeners.Add(Instance);
+		Trace.WriteLine("[LogCollector] Installed. Log file: " + LogFilePath);
+	}
 }

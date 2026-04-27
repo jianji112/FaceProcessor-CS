@@ -1,280 +1,301 @@
+#define TRACE
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using OpenCvSharp;
+using System.Linq;
 using FaceProcessor.Models;
+using OpenCvSharp;
 
 namespace FaceProcessor.Services;
 
-/// <summary>图片处理器</summary>
 public class ImageProcessor
 {
-    private readonly FaceDetector? _detector;
+	public ImageProcessor(FaceDetector? detector = null)
+	{
+	}
 
-    public ImageProcessor(FaceDetector? detector = null)
-    {
-        _detector = detector;
-    }
+	public Mat Process(Mat image, List<FaceRect> faces, ProcessMode mode, ProcessOptions? options = null)
+	{
+		if (options == null)
+		{
+			options = new ProcessOptions();
+		}
+		faces = SelectFacesToProcess(faces, options.MaxFacesToProcess);
+		if (faces.Count != 0)
+		{
+			switch (mode)
+			{
+			case ProcessMode.None:
+				break;
+			case ProcessMode.Mosaic:
+				return ApplyMosaic(image, faces, options.BlockSize);
+			case ProcessMode.Blur:
+				return ApplyBlur(image, faces, options.BlurStrength);
+			case ProcessMode.BlackMesh:
+				return ApplyBlackMesh(image, faces);
+			case ProcessMode.Grid:
+				return ApplyGrid(image, faces);
+			case ProcessMode.Split:
+				return CreateBackgroundOnlyImage(image, faces);
+			default:
+				return image.Clone();
+			}
+		}
+		return image.Clone();
+	}
 
-    /// <summary>处理图片</summary>
-    public Mat Process(Mat image, List<FaceRect> faces, ProcessMode mode, ProcessOptions? options = null)
-    {
-        options ??= new ProcessOptions();
+	public (Mat BackgroundOnly, Mat FaceOnly) CreateFaceSeparationOutputs(Mat image, List<FaceRect> faces, ProcessOptions? options = null)
+	{
+		List<FaceRect> list = SelectFacesToProcess(faces, options?.MaxFacesToProcess ?? 1);
+		Mat backgroundOnly = image.Clone();
+		Mat faceOnly = new Mat(image.Rows, image.Cols, image.Type(), Scalar.Black);
+		foreach (FaceRect face in list)
+		{
+			Rect region = GetExpandedRect(image, face, 0.04);
+			using Mat mask = CreateFaceMask(region, face);
+			using (Mat sourceRegion = new Mat(image, region))
+			{
+				using Mat faceRegion = new Mat(faceOnly, region);
+				sourceRegion.CopyTo(faceRegion, mask);
+			}
+			using Mat backgroundRegion = new Mat(backgroundOnly, region);
+			backgroundRegion.SetTo(Scalar.Black, mask);
+		}
+		return (BackgroundOnly: backgroundOnly, FaceOnly: faceOnly);
+	}
 
-        System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Process调用: mode={mode}, faces.Count={faces.Count}");
+	public static List<FaceRect> SelectFacesToProcess(IEnumerable<FaceRect> faces, int maxFacesToProcess)
+	{
+		List<FaceRect> orderedFaces = (from face in faces
+			orderby face.Confidence descending, face.Width * face.Height descending
+			select face).ToList();
+		if (maxFacesToProcess <= 0 || orderedFaces.Count <= maxFacesToProcess)
+		{
+			return orderedFaces;
+		}
+		return orderedFaces.Take(maxFacesToProcess).ToList();
+	}
 
-        // 如果没有人脸或选择"不处理"，返回原图
-        if (faces == null || faces.Count == 0 || mode == ProcessMode.None)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 返回原图（无人脸或不处理）");
-            return image.Clone();
-        }
+	private Mat ApplyMosaic(Mat image, List<FaceRect> faces, int blockSize = 0)
+	{
+		Mat result = image.Clone();
+		foreach (FaceRect face in faces)
+		{
+			Rect region = GetExpandedRect(image, face, 0.04);
+			using Mat mask = CreateFaceMask(region, face);
+			int actualBlockSize = ((blockSize > 0) ? blockSize : Math.Max(10, Math.Min(face.Width, face.Height) / 10));
+			ApplyMaskedEffect(result, region, mask, (Mat source) => CreateMosaicRegion(source, actualBlockSize));
+		}
+		return result;
+	}
 
-        return mode switch
-        {
-            ProcessMode.Mosaic => ApplyMosaic(image, faces, options.BlockSize),
-            ProcessMode.Blur => ApplyBlur(image, faces, options.BlurStrength),
-            ProcessMode.BlackMesh => ApplyBlackMesh(image, faces),
-            ProcessMode.Grid => ApplyGrid(image, faces),
-            ProcessMode.Split => ApplySplit(image, faces, options),
-            _ => image.Clone()
-        };
-    }
+	private Mat ApplyBlur(Mat image, List<FaceRect> faces, int blurStrength = 99)
+	{
+		Mat result = image.Clone();
+		int kernelSize = NormalizeKernelSize(blurStrength);
+		foreach (FaceRect face in faces)
+		{
+			Rect region = GetExpandedRect(image, face, 0.06);
+			using Mat mask = CreateFaceMask(region, face);
+			ApplyMaskedEffect(result, region, mask, delegate(Mat source)
+			{
+				Mat mat = new Mat();
+				Cv2.GaussianBlur(source, mat, new Size(kernelSize, kernelSize), 30.0);
+				return mat;
+			});
+		}
+		return result;
+	}
 
-    /// <summary>马赛克</summary>
-    private Mat ApplyMosaic(Mat image, List<FaceRect> faces, int blockSize = 0)
-    {
-        var result = image.Clone();
-        
-        foreach (var face in faces)
-        {
-            var pad = (int)(Math.Min(face.Width, face.Height) * 0.1);
-            var x1 = Math.Max(0, face.X - pad);
-            var y1 = Math.Max(0, face.Y - pad);
-            var x2 = Math.Min(image.Width, face.X + face.Width + pad);
-            var y2 = Math.Min(image.Height, face.Y + face.Height + pad);
+	private Mat ApplyBlackMesh(Mat image, List<FaceRect> faces)
+	{
+		Mat result = image.Clone();
+		foreach (FaceRect face in faces)
+		{
+			Rect region = GetExpandedRect(image, face, 0.04);
+			using Mat mask = CreateFaceMask(region, face);
+			int spacing = Math.Max(8, Math.Min(face.Width, face.Height) / 20);
+			int lineWidth = Math.Max(2, spacing / 4);
+			ApplyMaskedEffect(result, region, mask, (Mat source) => CreateBlackMeshRegion(source, spacing, lineWidth));
+		}
+		return result;
+	}
 
-            var actualBlockSize = blockSize > 0 ? blockSize : Math.Max(10, Math.Min(face.Width, face.Height) / 10);
-            var faceRegion = result[new Rect(x1, y1, x2 - x1, y2 - y1)];
+	private Mat ApplyGrid(Mat image, List<FaceRect> faces)
+	{
+		Mat result = image.Clone();
+		foreach (FaceRect face in faces)
+		{
+			Rect region = GetExpandedRect(image, face, 0.04);
+			using Mat mask = CreateFaceMask(region, face);
+			int spacing = Math.Max(15, Math.Min(face.Width, face.Height) / 15);
+			Scalar color = new Scalar(50.0, 50.0, 50.0);
+			ApplyMaskedEffect(result, region, mask, (Mat source) => CreateGridRegion(source, spacing, color));
+		}
+		return result;
+	}
 
-            for (int y = 0; y < faceRegion.Height; y += actualBlockSize)
-            {
-                for (int x = 0; x < faceRegion.Width; x += actualBlockSize)
-                {
-                    var w = Math.Min(actualBlockSize, faceRegion.Width - x);
-                    var h = Math.Min(actualBlockSize, faceRegion.Height - y);
-                    var block = faceRegion[new Rect(x, y, w, h)];
-                    var meanColor = Cv2.Mean(block);
-                    block.SetTo(new Scalar(meanColor.Val0, meanColor.Val1, meanColor.Val2));
-                }
-            }
-        }
+	private Mat CreateBackgroundOnlyImage(Mat image, List<FaceRect> faces)
+	{
+		(Mat BackgroundOnly, Mat FaceOnly) tuple = CreateFaceSeparationOutputs(image, faces);
+		var (backgroundOnly, _) = tuple;
+		tuple.FaceOnly.Dispose();
+		return backgroundOnly;
+	}
 
-        return result;
-    }
+	public Mat Resize(Mat image, int maxResolution)
+	{
+		if (maxResolution <= 0)
+		{
+			return image.Clone();
+		}
+		int maxDimension = Math.Max(image.Width, image.Height);
+		if (maxDimension <= maxResolution)
+		{
+			return image.Clone();
+		}
+		double scale = (double)maxResolution / (double)maxDimension;
+		int newWidth = (int)((double)image.Width * scale);
+		int newHeight = (int)((double)image.Height * scale);
+		Mat resized = new Mat();
+		Cv2.Resize(image, resized, new Size(newWidth, newHeight), 0.0, 0.0, InterpolationFlags.Area);
+		return resized;
+	}
 
-    /// <summary>高斯模糊</summary>
-    private Mat ApplyBlur(Mat image, List<FaceRect> faces, int blurStrength = 99)
-    {
-        var result = image.Clone();
-        
-        foreach (var face in faces)
-        {
-            var pad = (int)(Math.Min(face.Width, face.Height) * 0.15);
-            var x1 = Math.Max(0, face.X - pad);
-            var y1 = Math.Max(0, face.Y - pad);
-            var x2 = Math.Min(image.Width, face.X + face.Width + pad);
-            var y2 = Math.Min(image.Height, face.Y + face.Height + pad);
+	public bool Save(Mat image, string outputPath, string format = "PNG", int quality = 95, int maxSizeMB = 0)
+	{
+		try
+		{
+			if (image == null || image.Empty())
+			{
+				Trace.WriteLine("[ImageProcessor] Invalid image, save skipped");
+				return false;
+			}
+			string directory = Path.GetDirectoryName(outputPath);
+			if (string.IsNullOrWhiteSpace(directory))
+			{
+				Trace.WriteLine("[ImageProcessor] Invalid output path: " + outputPath);
+				return false;
+			}
+			Directory.CreateDirectory(directory);
+			string normalizedFormat = (format ?? "PNG").Trim().ToLowerInvariant();
+			string text;
+			switch (normalizedFormat)
+			{
+			case "jpg":
+			case "jpeg":
+				text = ".jpg";
+				break;
+			case "webp":
+				text = ".webp";
+				break;
+			default:
+				text = ".png";
+				break;
+			}
+			string extension = text;
+			string finalPath = Path.ChangeExtension(outputPath, extension);
+			if (!((normalizedFormat == "png") ? Cv2.ImWrite(finalPath, image) : Cv2.ImWrite(finalPath, image, new ImageEncodingParam((!(normalizedFormat == "webp")) ? ImwriteFlags.JpegQuality : ImwriteFlags.WebPQuality, quality))) || !File.Exists(finalPath))
+			{
+				Trace.WriteLine("[ImageProcessor] Save failed: " + finalPath);
+				return false;
+			}
+			long fileSize = new FileInfo(finalPath).Length;
+			if (maxSizeMB > 0 && fileSize > (long)maxSizeMB * 1024L * 1024 && quality > 10)
+			{
+				return Save(image, finalPath, normalizedFormat, quality - 10, maxSizeMB);
+			}
+			return true;
+		}
+		catch (Exception value)
+		{
+			Trace.WriteLine($"[ImageProcessor] Save exception: {value}");
+			return false;
+		}
+	}
 
-            var faceRegion = result[new Rect(x1, y1, x2 - x1, y2 - y1)];
-            var blurred = new Mat();
-            Cv2.GaussianBlur(faceRegion, blurred, new Size(blurStrength, blurStrength), 30);
-            blurred.CopyTo(faceRegion);
-        }
+	private static Rect GetExpandedRect(Mat image, FaceRect face, double paddingRatio)
+	{
+		int padding = (int)((double)Math.Min(face.Width, face.Height) * paddingRatio);
+		int x1 = Math.Max(0, face.X - padding);
+		int y1 = Math.Max(0, face.Y - padding);
+		int x2 = Math.Min(image.Width, face.X + face.Width + padding);
+		int y2 = Math.Min(image.Height, face.Y + face.Height + padding);
+		return new Rect(x1, y1, Math.Max(1, x2 - x1), Math.Max(1, y2 - y1));
+	}
 
-        return result;
-    }
+	private static int NormalizeKernelSize(int blurStrength)
+	{
+		int kernelSize = Math.Max(1, blurStrength);
+		if (kernelSize % 2 != 0)
+		{
+			return kernelSize;
+		}
+		return kernelSize + 1;
+	}
 
-    /// <summary>黑色网格</summary>
-    private Mat ApplyBlackMesh(Mat image, List<FaceRect> faces)
-    {
-        var result = image.Clone();
+	private static void ApplyMaskedEffect(Mat image, Rect region, Mat mask, Func<Mat, Mat> effectFactory)
+	{
+		using Mat targetRegion = new Mat(image, region);
+		using Mat source = targetRegion.Clone();
+		using Mat processed = effectFactory(source);
+		processed.CopyTo(targetRegion, mask);
+	}
 
-        foreach (var face in faces)
-        {
-            var pad = (int)(Math.Min(face.Width, face.Height) * 0.1);
-            var x1 = Math.Max(0, face.X - pad);
-            var y1 = Math.Max(0, face.Y - pad);
-            var x2 = Math.Min(image.Width, face.X + face.Width + pad);
-            var y2 = Math.Min(image.Height, face.Y + face.Height + pad);
+	private static Mat CreateMosaicRegion(Mat source, int blockSize)
+	{
+		Mat result = source.Clone();
+		for (int y = 0; y < result.Height; y += blockSize)
+		{
+			for (int x = 0; x < result.Width; x += blockSize)
+			{
+				int width = Math.Min(blockSize, result.Width - x);
+				int height = Math.Min(blockSize, result.Height - y);
+				using Mat block = new Mat(result, new Rect(x, y, width, height));
+				Scalar meanColor = Cv2.Mean(block);
+				block.SetTo(new Scalar(meanColor.Val0, meanColor.Val1, meanColor.Val2));
+			}
+		}
+		return result;
+	}
 
-            var width = x2 - x1;
-            var height = y2 - y1;
-            var spacing = Math.Max(8, Math.Min(face.Width, face.Height) / 20);
-            var lineWidth = Math.Max(2, spacing / 4);
+	private static Mat CreateBlackMeshRegion(Mat source, int spacing, int lineWidth)
+	{
+		Mat result = source.Clone();
+		using Mat mesh = new Mat(source.Height, source.Width, MatType.CV_8UC3, new Scalar(20.0, 20.0, 20.0));
+		for (int i = -source.Height; i < source.Width + source.Height; i += spacing)
+		{
+			Cv2.Line(mesh, new Point(i, 0), new Point(i + source.Height, source.Height), new Scalar(20.0, 20.0, 20.0), lineWidth);
+			Cv2.Line(mesh, new Point(i + source.Height, 0), new Point(i, source.Height), new Scalar(20.0, 20.0, 20.0), lineWidth);
+		}
+		Cv2.AddWeighted(mesh, 0.7, result, 0.3, 0.0, result);
+		return result;
+	}
 
-            // 创建网格
-            var mesh = new Mat(height, width, MatType.CV_8UC3, new Scalar(20, 20, 20));
-            
-            // 绘制斜线
-            for (int i = -height; i < width + height; i += spacing)
-            {
-                Cv2.Line(mesh, new Point(i, 0), new Point(i + height, height), new Scalar(20, 20, 20), lineWidth);
-                Cv2.Line(mesh, new Point(i + height, 0), new Point(i, height), new Scalar(20, 20, 20), lineWidth);
-            }
+	private static Mat CreateGridRegion(Mat source, int spacing, Scalar color)
+	{
+		Mat result = source.Clone();
+		for (int x = 0; x < result.Width; x += spacing)
+		{
+			Cv2.Line(result, new Point(x, 0), new Point(x, result.Height), color);
+		}
+		for (int y = 0; y < result.Height; y += spacing)
+		{
+			Cv2.Line(result, new Point(0, y), new Point(result.Width, y), color);
+		}
+		return result;
+	}
 
-            // 简单混合
-            var faceRegion = result[new Rect(x1, y1, width, height)];
-            Cv2.AddWeighted(mesh, 0.7, faceRegion, 0.3, 0, faceRegion);
-        }
-
-        return result;
-    }
-
-    /// <summary>网格线</summary>
-    private Mat ApplyGrid(Mat image, List<FaceRect> faces)
-    {
-        var result = image.Clone();
-
-        foreach (var face in faces)
-        {
-            var pad = (int)(Math.Min(face.Width, face.Height) * 0.1);
-            var x1 = Math.Max(0, face.X - pad);
-            var y1 = Math.Max(0, face.Y - pad);
-            var x2 = Math.Min(image.Width, face.X + face.Width + pad);
-            var y2 = Math.Min(image.Height, face.Y + face.Height + pad);
-
-            var spacing = Math.Max(15, Math.Min(face.Width, face.Height) / 15);
-            var color = new Scalar(50, 50, 50);
-
-            for (int x = x1; x < x2; x += spacing)
-            {
-                Cv2.Line(result, new Point(x, y1), new Point(x, y2), color, 1);
-            }
-            for (int y = y1; y < y2; y += spacing)
-            {
-                Cv2.Line(result, new Point(x1, y), new Point(x2, y), color, 1);
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>拆分图（人脸 + 无脸）</summary>
-    private Mat ApplySplit(Mat image, List<FaceRect> faces, ProcessOptions options)
-    {
-        return image;
-    }
-
-    /// <summary>调整分辨率</summary>
-    public Mat Resize(Mat image, int maxResolution)
-    {
-        if (maxResolution <= 0) return image;
-
-        var maxDim = Math.Max(image.Width, image.Height);
-        if (maxDim <= maxResolution) return image;
-
-        var scale = (double)maxResolution / maxDim;
-        var newWidth = (int)(image.Width * scale);
-        var newHeight = (int)(image.Height * scale);
-        
-        var resized = new Mat();
-        Cv2.Resize(image, resized, new Size(newWidth, newHeight), 0, 0, InterpolationFlags.Area);
-        return resized;
-    }
-
-    /// <summary>保存图片</summary>
-    public bool Save(Mat image, string outputPath, string format = "PNG", int quality = 95, int maxSizeMB = 0)
-    {
-        try
-        {
-            // 验证图片有效性
-            if (image == null || image.Empty())
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 图片无效，无法保存");
-                return false;
-            }
-
-            // 确保输出目录存在
-            var dir = Path.GetDirectoryName(outputPath);
-            if (string.IsNullOrEmpty(dir))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 输出目录无效: {outputPath}");
-                return false;
-            }
-            if (!Directory.Exists(dir))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 创建输出目录: {dir}");
-                Directory.CreateDirectory(dir);
-            }
-
-            // 确定文件扩展名
-            var ext = format.ToLower() switch
-            {
-                "jpg" or "jpeg" => ".jpg",
-                "webp" => ".webp",
-                _ => ".png"
-            };
-            var finalPath = Path.ChangeExtension(outputPath, ext);
-
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 保存图片: {finalPath}, 格式: {format}, 质量: {quality}");
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 图片尺寸: {image.Width}x{image.Height}, 通道: {image.Channels()}");
-
-            // 保存图片
-            bool success;
-            if (format.ToLower() == "png")
-            {
-                success = Cv2.ImWrite(finalPath, image);
-            }
-            else
-            {
-                // JPG/WEBP 使用质量参数
-                var param = new ImageEncodingParam(
-                    format.ToLower() == "webp" ? ImwriteFlags.WebPQuality : ImwriteFlags.JpegQuality,
-                    quality);
-                success = Cv2.ImWrite(finalPath, image, new[] { param });
-            }
-
-            if (!success)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Cv2.ImWrite 返回 false，格式: {format}");
-                return false;
-            }
-
-            // 验证文件
-            if (!File.Exists(finalPath))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件保存后不存在: {finalPath}");
-                return false;
-            }
-
-            var fileSize = new FileInfo(finalPath).Length;
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 保存成功: {finalPath}, 大小: {fileSize / 1024.0:F1} KB");
-
-            // 文件大小限制
-            if (maxSizeMB > 0 && fileSize > maxSizeMB * 1024 * 1024 && quality > 10)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageProcessor] 文件过大({fileSize / 1024.0:F1}KB)，尝试降低质量...");
-                return Save(image, finalPath, format, quality - 10, maxSizeMB);
-            }
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ImageProcessor] Save 异常: {ex.Message}\n{ex.StackTrace}");
-            return false;
-        }
-    }
-}
-
-/// <summary>处理选项</summary>
-public class ProcessOptions
-{
-    public int BlockSize { get; set; } = 0;
-    public int BlurStrength { get; set; } = 99;
-    public int MaxResolution { get; set; } = 0;
-    public int MaxFileSizeMB { get; set; } = 0;
-    public string OutputPath { get; set; } = "";
-    public string Format { get; set; } = "PNG";
-    public int Quality { get; set; } = 95;
-    public bool KeepAudio { get; set; } = true;
+	private static Mat CreateFaceMask(Rect region, FaceRect face)
+	{
+		Mat mat = new Mat(region.Height, region.Width, MatType.CV_8UC1, Scalar.Black);
+		int centerX = Math.Clamp(face.X - region.X + face.Width / 2, 0, region.Width - 1);
+		int centerY = Math.Clamp(face.Y - region.Y + face.Height / 2, 0, region.Height - 1);
+		int maxRadiusX = Math.Max(1, Math.Min(centerX, region.Width - centerX - 1));
+		int maxRadiusY = Math.Max(1, Math.Min(centerY, region.Height - centerY - 1));
+		int radiusX = Math.Min(Math.Max(1, (int)Math.Round((double)face.Width * 0.42)), maxRadiusX);
+		Cv2.Ellipse(axes: new Size(radiusX, Math.Min(Math.Max(1, (int)Math.Round((double)face.Height * 0.48)), maxRadiusY)), img: mat, center: new Point(centerX, centerY), angle: 0.0, startAngle: 0.0, endAngle: 360.0, color: Scalar.White, thickness: -1, lineType: LineTypes.AntiAlias);
+		return mat;
+	}
 }

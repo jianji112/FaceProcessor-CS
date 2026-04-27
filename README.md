@@ -2,22 +2,24 @@
 
 `FaceProcessor` is a .NET 8 / WPF desktop app for local face processing in images and videos.
 
-Current version: `v1.0.1`
+Current version: `v1.0.0`
 
 ## Stack
 
 - .NET 8
 - WPF
 - OpenCvSharp4
-- ONNX Runtime
+- ONNX Runtime + DirectML
 - Xabe.FFmpeg
 
 ## Features
 
 - Image processing: mosaic, blur, black mesh, grid, split mode
 - Video processing: frame-by-frame face detection and masking
-- Optional GPU inference when the local runtime supports it
+- DirectML GPU inference with CPU fallback
+- Haar cascade fallback when the primary detector backend is unavailable
 - Audio retention during video export
+- Local FFmpeg reuse with automatic download fallback
 
 ## Kept Project Layout
 
@@ -42,6 +44,7 @@ During build, these files are copied into the app output under `models/`:
 
 - `face_detector.caffemodel`
 - `deploy.prototxt`
+- `haarcascade_frontalface_default.xml`
 - `yolov8n-face.onnx` if you place one in `assets/models/`
 
 ## Build

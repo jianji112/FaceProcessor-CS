@@ -126,6 +126,9 @@ jobs:
           Get-ChildItem publish -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
 
       - name: Upload Artifact
+        # 暂时禁用：GitHub artifact 存储配额已满
+        # 等待 6-12 小时后配额释放再启用
+        if: false
         uses: actions/upload-artifact@v4
         with:
           name: FaceProcessor-CS-EXE

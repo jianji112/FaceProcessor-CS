@@ -1,167 +1,474 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Win32;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using FaceProcessor.Models;
 using FaceProcessor.Services;
+using Microsoft.Win32;
+using OpenCvSharp;
 
 namespace FaceProcessor.Views;
 
 public partial class VideoTabView : UserControl
 {
-    private readonly ConfigManager _configManager;
-    private readonly VideoProcessor _processor;
-    private CancellationTokenSource? _cts;
+	private ConfigManager? _configManager;
 
-    public VideoTabView(ConfigManager configManager, VideoProcessor processor)
-    {
-        InitializeComponent();
-        _configManager = configManager;
-        _processor = processor;
-        LoadConfig();
-        BindEvents();
-    }
+	private VideoProcessor? _processor;
 
-    private void LoadConfig()
-    {
-        var c = _configManager.Config;
-        ModeCombo.SelectedIndex = c.VideoMode == ProcessMode.Blur ? 1 : 0;
-        BlockSizeTextBox.Text = c.VideoBlockSize.ToString();
-        BlurStrengthTextBox.Text = c.VideoBlurStrength.ToString();
-        KeepAudioCheckBox.IsChecked = c.VideoKeepAudio;
-    }
+	private FaceDetector? _detector;
 
-    private void BindEvents()
-    {
-        ModeCombo.SelectionChanged += (_, _) =>
-            _configManager.Update(c => c.VideoMode = ModeCombo.SelectedIndex == 0 ? ProcessMode.Mosaic : ProcessMode.Blur);
-        BlockSizeTextBox.TextChanged += (_, _) =>
-        {
-            if (int.TryParse(BlockSizeTextBox.Text, out var v))
-                _configManager.Update(c => c.VideoBlockSize = v);
-        };
-        BlurStrengthTextBox.TextChanged += (_, _) =>
-        {
-            if (int.TryParse(BlurStrengthTextBox.Text, out var v))
-                _configManager.Update(c => c.VideoBlurStrength = v);
-        };
-        KeepAudioCheckBox.Checked += (_, _) =>
-            _configManager.Update(c => c.VideoKeepAudio = KeepAudioCheckBox.IsChecked == true);
-    }
+	private CancellationTokenSource? _cts;
 
-    public void UpdateGpuStatus(bool available, string message)
-    {
-        Dispatcher.Invoke(() =>
-        {
-            GpuStatusText.Text = available ? $"✅ {message}" : $"⚠️ {message}";
-            GpuStatusText.Foreground = available ? 
-                System.Windows.Media.Brushes.LightGreen : 
-                System.Windows.Media.Brushes.Orange;
-        });
-    }
+	private bool _eventsBound;
 
-    private void SelectVideo_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new OpenFileDialog { Filter = "视频|*.mp4;*.avi;*.mov;*.mkv;*.flv;*.wmv" };
-        if (dlg.ShowDialog() == true)
-        {
-            VideoPathTextBox.Text = dlg.FileName;
-            // Always clear output path when input changes to avoid stale filename
-            OutputPathTextBox.Text = "";
-            var dir = Path.GetDirectoryName(dlg.FileName);
-            var name = Path.GetFileNameWithoutExtension(dlg.FileName);
-            OutputPathTextBox.Text = Path.Combine(dir!, $"{name}_processed.mp4");
-        }
-    }
+	private bool _isInitialized;
 
-    private void BrowseOutput_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new OpenFolderDialog();
-        if (dlg.ShowDialog() == true)
-        {
-            // Always use the currently selected input video name (not a stale one)
-            var name = string.IsNullOrEmpty(VideoPathTextBox.Text)
-                ? "output"
-                : Path.GetFileNameWithoutExtension(VideoPathTextBox.Text);
-            OutputPathTextBox.Text = Path.Combine(dlg.FolderName, $"{name}_processed.mp4");
-        }
-    }
+	public VideoTabView()
+	{
+		InitializeComponent();
+	}
 
-    private async void Process_Click(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(VideoPathTextBox.Text) || !File.Exists(VideoPathTextBox.Text))
-        {
-            MessageBox.Show("请先选择视频文件", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+	public void Initialize(ConfigManager configManager, VideoProcessor processor, FaceDetector? detector)
+	{
+		if (_isInitialized)
+		{
+			return;
+		}
 
-        if (string.IsNullOrEmpty(OutputPathTextBox.Text))
-        {
-            MessageBox.Show("请指定输出路径", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+		_configManager = configManager;
+		_processor = processor;
+		_detector = detector;
+		LoadConfig();
+		BindEvents();
+		UpdateOutputDirectoryState();
+		_isInitialized = true;
+	}
 
-        ProcessBtn.Visibility = Visibility.Collapsed;
-        CancelBtn.Visibility = Visibility.Visible;
-        CancelBtn.IsEnabled = true;
-        ProgressBar.Value = 0;
-        StatusText.Text = "正在初始化...";
+	public void UpdateRuntimeSummary(string detectorSummary, string encoderSummary, bool gpuActive)
+	{
+		GpuStatusText.Text = detectorSummary;
+		GpuStatusText.Foreground = gpuActive ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("WarningBrush");
+		EngineSummaryText.Text = encoderSummary;
+	}
 
-        // 重置处理器状态
-        _processor.Reset();
-        _cts = new CancellationTokenSource();
-        
-        var progress = new Progress<double>(p => Dispatcher.Invoke(() =>
-        {
-            ProgressBar.Value = p * 100;
-            ProgressText.Text = $"{(int)(p * 100)}%";
-        }));
+	private void LoadConfig()
+	{
+		AppConfig config = EnsureConfigManager().Config;
+		ModeCombo.SelectedIndex = config.VideoMode == ProcessMode.Blur ? 1 : 0;
+		BlockSizeTextBox.Text = config.VideoBlockSize.ToString();
+		BlurStrengthTextBox.Text = config.VideoBlurStrength.ToString();
+		FaceThresholdSlider.Value = config.VideoFaceThreshold;
+		FaceThresholdText.Text = config.VideoFaceThreshold.ToString("0.00");
+		KeepAudioCheckBox.IsChecked = config.VideoKeepAudio;
+		VideoFaceCountCombo.SelectedIndex = GetFaceCountComboIndex(config.VideoFaceCountLimit);
+		OutputResolutionCombo.SelectedIndex = config.VideoOutputResolution switch
+		{
+			VideoOutputResolution.P1080 => 1,
+			VideoOutputResolution.P720 => 2,
+			_ => 0
+		};
+	}
 
-        var options = new ProcessOptions
-        {
-            BlockSize = int.TryParse(BlockSizeTextBox.Text, out var bs) ? bs : 0,
-            BlurStrength = int.TryParse(BlurStrengthTextBox.Text, out var bls) ? bls : 99,
-            KeepAudio = KeepAudioCheckBox.IsChecked == true
-        };
-        var mode = ModeCombo.SelectedIndex == 0 ? ProcessMode.Mosaic : ProcessMode.Blur;
+	private void BindEvents()
+	{
+		if (_eventsBound)
+		{
+			return;
+		}
 
-        bool success = false;
-        bool cancelled = false;
-        
-        try
-        {
-            success = await _processor.ProcessVideoAsync(
-                VideoPathTextBox.Text, OutputPathTextBox.Text, mode, options, progress, _cts.Token);
-            cancelled = _cts.Token.IsCancellationRequested;
-        }
-        catch (OperationCanceledException)
-        {
-            cancelled = true;
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = $"❌ 错误: {ex.Message}";
-        }
+		_eventsBound = true;
 
-        Dispatcher.Invoke(() =>
-        {
-            ProcessBtn.Visibility = Visibility.Visible;
-            CancelBtn.Visibility = Visibility.Collapsed;
-            
-            if (cancelled)
-                StatusText.Text = "⚠️ 已取消";
-            else if (success)
-                StatusText.Text = "✅ 完成！";
-            else
-                StatusText.Text = "❌ 处理失败";
-        });
-    }
+		ModeCombo.SelectionChanged += (_, _) =>
+		{
+			if (_configManager == null)
+			{
+				return;
+			}
 
-    private void Cancel_Click(object sender, RoutedEventArgs e)
-    {
-        _cts?.Cancel();
-        _processor.Cancel();
-        StatusText.Text = "正在取消...";
-        CancelBtn.IsEnabled = false;
-    }
+			_configManager.Update(config => config.VideoMode = ModeCombo.SelectedIndex == 0 ? ProcessMode.Mosaic : ProcessMode.Blur);
+		};
+
+		BlockSizeTextBox.TextChanged += (_, _) =>
+		{
+			if (_configManager == null || !int.TryParse(BlockSizeTextBox.Text, out int value))
+			{
+				return;
+			}
+
+			_configManager.Update(config => config.VideoBlockSize = value);
+		};
+
+		BlurStrengthTextBox.TextChanged += (_, _) =>
+		{
+			if (_configManager == null || !int.TryParse(BlurStrengthTextBox.Text, out int value))
+			{
+				return;
+			}
+
+			_configManager.Update(config => config.VideoBlurStrength = value);
+		};
+
+		FaceThresholdSlider.ValueChanged += (_, _) =>
+		{
+			if (_configManager == null)
+			{
+				return;
+			}
+
+			FaceThresholdText.Text = FaceThresholdSlider.Value.ToString("0.00");
+			_configManager.Update(config => config.VideoFaceThreshold = FaceThresholdSlider.Value);
+		};
+
+		KeepAudioCheckBox.Checked += (_, _) =>
+		{
+			if (_configManager == null)
+			{
+				return;
+			}
+
+			_configManager.Update(config => config.VideoKeepAudio = true);
+		};
+
+		KeepAudioCheckBox.Unchecked += (_, _) =>
+		{
+			if (_configManager == null)
+			{
+				return;
+			}
+
+			_configManager.Update(config => config.VideoKeepAudio = false);
+		};
+
+		VideoFaceCountCombo.SelectionChanged += (_, _) =>
+		{
+			if (_configManager == null)
+			{
+				return;
+			}
+
+			_configManager.Update(config => config.VideoFaceCountLimit = GetSelectedFaceCountLimit(VideoFaceCountCombo));
+		};
+
+		OutputResolutionCombo.SelectionChanged += (_, _) =>
+		{
+			if (_configManager == null)
+			{
+				return;
+			}
+
+			_configManager.Update(config => config.VideoOutputResolution = OutputResolutionCombo.SelectedIndex switch
+			{
+				1 => VideoOutputResolution.P1080,
+				2 => VideoOutputResolution.P720,
+				_ => VideoOutputResolution.Original
+			});
+		};
+
+		OutputPathTextBox.TextChanged += (_, _) => UpdateOutputDirectoryState();
+	}
+
+	private async void SelectVideo_Click(object sender, RoutedEventArgs e)
+	{
+		OpenFileDialog dialog = new()
+		{
+			Filter = "视频|*.mp4;*.avi;*.mov;*.mkv;*.flv;*.wmv"
+		};
+		if (dialog.ShowDialog() != true)
+		{
+			return;
+		}
+
+		VideoPathTextBox.Text = dialog.FileName;
+		string directory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+		string name = Path.GetFileNameWithoutExtension(dialog.FileName);
+		OutputPathTextBox.Text = Path.Combine(directory, name + "_processed.mp4");
+		await LoadVideoPreviewAsync(dialog.FileName);
+	}
+
+	private void BrowseOutput_Click(object sender, RoutedEventArgs e)
+	{
+		OpenFolderDialog dialog = new();
+		if (dialog.ShowDialog() == true)
+		{
+			string name = string.IsNullOrWhiteSpace(VideoPathTextBox.Text) ? "output" : Path.GetFileNameWithoutExtension(VideoPathTextBox.Text);
+			OutputPathTextBox.Text = Path.Combine(dialog.FolderName, name + "_processed.mp4");
+		}
+	}
+
+	private void OpenOutputDirectory_Click(object sender, RoutedEventArgs e)
+	{
+		string? outputDirectory = ResolveOutputDirectory();
+		if (string.IsNullOrWhiteSpace(outputDirectory))
+		{
+			MessageBox.Show("请先设置输出路径。", "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Information);
+			return;
+		}
+
+		try
+		{
+			Directory.CreateDirectory(outputDirectory);
+			Process.Start(new ProcessStartInfo
+			{
+				FileName = outputDirectory,
+				UseShellExecute = true
+			});
+		}
+		catch (Exception ex)
+		{
+			MessageBox.Show("打开输出目录失败：\n" + ex.Message, "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Error);
+		}
+	}
+
+	private async void Process_Click(object sender, RoutedEventArgs e)
+	{
+		if (string.IsNullOrWhiteSpace(VideoPathTextBox.Text) || !File.Exists(VideoPathTextBox.Text))
+		{
+			MessageBox.Show("请先选择源视频。", "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Warning);
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(OutputPathTextBox.Text))
+		{
+			MessageBox.Show("请先设置输出路径。", "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Warning);
+			return;
+		}
+
+		VideoProcessor processor = EnsureProcessor();
+		ProcessBtn.Visibility = Visibility.Collapsed;
+		CancelBtn.Visibility = Visibility.Visible;
+		CancelBtn.IsEnabled = true;
+		ProgressBar.Value = 0;
+		ProgressText.Text = "0%";
+		StatusText.Text = "正在初始化...";
+		processor.Reset();
+		_cts = new CancellationTokenSource();
+
+		Progress<double> progress = new(value =>
+		{
+			ProgressBar.Value = value < 0 ? 0 : value * 100;
+			ProgressText.Text = value < 0 ? "已停止" : $"{value * 100:0}%";
+			if (value < 0)
+			{
+				StatusText.Text = "已取消";
+			}
+			else if (value >= 0.95)
+			{
+				StatusText.Text = "正在合并音频...";
+			}
+			else if (value > 0)
+			{
+				StatusText.Text = "正在处理视频...";
+			}
+		});
+
+		ProcessOptions options = new()
+		{
+			BlockSize = int.TryParse(BlockSizeTextBox.Text, out int blockSize) ? blockSize : 0,
+			BlurStrength = int.TryParse(BlurStrengthTextBox.Text, out int blurStrength) ? blurStrength : 99,
+			FaceThreshold = (float)FaceThresholdSlider.Value,
+			MaxFacesToProcess = GetSelectedFaceCountLimit(VideoFaceCountCombo),
+			KeepAudio = KeepAudioCheckBox.IsChecked == true,
+			OutputResolution = OutputResolutionCombo.SelectedIndex switch
+			{
+				1 => VideoOutputResolution.P1080,
+				2 => VideoOutputResolution.P720,
+				_ => VideoOutputResolution.Original
+			}
+		};
+		ProcessMode mode = ModeCombo.SelectedIndex == 0 ? ProcessMode.Mosaic : ProcessMode.Blur;
+
+		bool success = false;
+		bool cancelled = false;
+		try
+		{
+			success = await processor.ProcessVideoAsync(VideoPathTextBox.Text, OutputPathTextBox.Text, mode, options, progress, _cts.Token);
+			cancelled = _cts.Token.IsCancellationRequested;
+			if (!string.IsNullOrWhiteSpace(processor.LastEncodingBackend))
+			{
+				EngineSummaryText.Text = "编码后端：" + processor.LastEncodingBackend;
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			cancelled = true;
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[VideoTab] Unexpected processing error: {ex}");
+			StatusText.Text = "错误：" + ex.Message;
+		}
+
+		ProcessBtn.Visibility = Visibility.Visible;
+		CancelBtn.Visibility = Visibility.Collapsed;
+
+		if (cancelled)
+		{
+			StatusText.Text = "已取消";
+		}
+		else if (success)
+		{
+			StatusText.Text = "处理完成";
+		}
+		else
+		{
+			StatusText.Text = "处理失败";
+		}
+	}
+
+	private void Cancel_Click(object sender, RoutedEventArgs e)
+	{
+		_cts?.Cancel();
+		_processor?.Cancel();
+		StatusText.Text = "正在取消...";
+		CancelBtn.IsEnabled = false;
+	}
+
+	private async Task LoadVideoPreviewAsync(string videoPath)
+	{
+		PreviewPlaceholderText.Visibility = Visibility.Visible;
+		PreviewPlaceholderText.Text = "正在读取首帧...";
+		PreviewSummaryText.Text = "正在分析视频";
+
+		try
+		{
+			VideoPreviewResult result = await Task.Run(() => BuildPreview(videoPath));
+			PreviewImage.Source = result.Bitmap;
+			PreviewPlaceholderText.Visibility = Visibility.Collapsed;
+			PreviewSummaryText.Text = $"预览帧：{result.Width} × {result.Height}";
+			VideoInfoText.Text = result.Summary;
+		}
+		catch (Exception ex)
+		{
+			Trace.WriteLine($"[VideoTab] Failed to load preview for {videoPath}: {ex}");
+			PreviewImage.Source = null;
+			PreviewPlaceholderText.Visibility = Visibility.Visible;
+			PreviewPlaceholderText.Text = "视频预览加载失败";
+			PreviewSummaryText.Text = "无法读取预览帧";
+			VideoInfoText.Text = "无法读取视频信息。";
+		}
+	}
+
+	private VideoPreviewResult BuildPreview(string videoPath)
+	{
+		using VideoCapture capture = new(videoPath);
+		if (!capture.IsOpened())
+		{
+			throw new InvalidOperationException("无法打开视频文件。");
+		}
+
+		using Mat frame = new();
+		if (!capture.Read(frame) || frame.Empty())
+		{
+			throw new InvalidOperationException("无法读取视频首帧。");
+		}
+
+		double fps = capture.Get(VideoCaptureProperties.Fps);
+		double frames = capture.Get(VideoCaptureProperties.FrameCount);
+		double seconds = fps > 0 ? frames / fps : 0;
+
+		using Mat preview = ResizePreview(frame, 980, 620);
+		List<FaceRect> faces = _detector?.Detect(preview) ?? [];
+		foreach (FaceRect face in faces)
+		{
+			Cv2.Rectangle(preview, new OpenCvSharp.Rect(face.X, face.Y, face.Width, face.Height), new Scalar(65, 133, 255), 3, LineTypes.AntiAlias);
+		}
+
+		BitmapSource bitmap = ToBitmapSource(preview);
+		bitmap.Freeze();
+
+		string summary = $"分辨率：{frame.Width} × {frame.Height}\n帧率：{(fps > 0 ? fps.ToString("0.##") : "未知")} fps\n时长：{TimeSpan.FromSeconds(seconds):hh\\:mm\\:ss}\n首帧检测到人脸：{faces.Count} 张";
+		return new VideoPreviewResult(bitmap, frame.Width, frame.Height, summary);
+	}
+
+	private static Mat ResizePreview(Mat original, int maxWidth, int maxHeight)
+	{
+		double scale = Math.Min((double)maxWidth / original.Width, (double)maxHeight / original.Height);
+		if (scale >= 1)
+		{
+			return original.Clone();
+		}
+
+		Mat resized = new();
+		Cv2.Resize(original, resized, new OpenCvSharp.Size((int)(original.Width * scale), (int)(original.Height * scale)), 0, 0, InterpolationFlags.Area);
+		return resized;
+	}
+
+	private static BitmapSource ToBitmapSource(Mat image)
+	{
+		Cv2.ImEncode(".png", image, out byte[] buffer);
+		using MemoryStream stream = new(buffer);
+		BitmapImage bitmap = new();
+		bitmap.BeginInit();
+		bitmap.CacheOption = BitmapCacheOption.OnLoad;
+		bitmap.StreamSource = stream;
+		bitmap.EndInit();
+		return bitmap;
+	}
+
+	private void UpdateOutputDirectoryState()
+	{
+		string? outputDirectory = ResolveOutputDirectory();
+		OpenOutputDirectoryBtn.IsEnabled = !string.IsNullOrWhiteSpace(outputDirectory);
+		OpenOutputDirectoryBtn.ToolTip = string.IsNullOrWhiteSpace(outputDirectory) ? "请先设置输出路径。" : outputDirectory;
+	}
+
+	private string? ResolveOutputDirectory()
+	{
+		string outputPath = OutputPathTextBox.Text.Trim();
+		if (!string.IsNullOrWhiteSpace(outputPath))
+		{
+			string? directory = Path.GetDirectoryName(outputPath);
+			if (!string.IsNullOrWhiteSpace(directory))
+			{
+				return directory;
+			}
+
+			if (!Path.HasExtension(outputPath))
+			{
+				return outputPath;
+			}
+		}
+
+		return string.IsNullOrWhiteSpace(VideoPathTextBox.Text) ? null : Path.GetDirectoryName(VideoPathTextBox.Text);
+	}
+
+	private static int GetFaceCountComboIndex(int maxFacesToProcess)
+	{
+		return maxFacesToProcess switch
+		{
+			2 => 1,
+			3 => 2,
+			0 => 3,
+			_ => 0
+		};
+	}
+
+	private static int GetSelectedFaceCountLimit(ComboBox comboBox)
+	{
+		return comboBox.SelectedIndex switch
+		{
+			1 => 2,
+			2 => 3,
+			3 => 0,
+			_ => 1
+		};
+	}
+
+	private ConfigManager EnsureConfigManager()
+	{
+		return _configManager ?? throw new InvalidOperationException("VideoTabView 尚未初始化。");
+	}
+
+	private VideoProcessor EnsureProcessor()
+	{
+		return _processor ?? throw new InvalidOperationException("VideoProcessor 尚未初始化。");
+	}
+
+	private sealed record VideoPreviewResult(BitmapSource Bitmap, int Width, int Height, string Summary);
 }

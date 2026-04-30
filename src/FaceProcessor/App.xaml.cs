@@ -1,23 +1,36 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using FaceProcessor.Services;
 
 namespace FaceProcessor;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
-    {
-        base.OnStartup(e);
+	protected override void OnStartup(StartupEventArgs e)
+	{
+		LogCollector.Install();
+		DispatcherUnhandledException += OnDispatcherUnhandledException;
+		LoadThemeResources();
+		base.OnStartup(e);
+		MainWindow = new MainWindow();
+		MainWindow.Show();
+	}
 
-        // 安装日志收集器（修复Bug 3：确保Debug.WriteLine和Trace.WriteLine都能被收集）
-        LogCollector.Install();
+	private void LoadThemeResources()
+	{
+		string themePath = Path.Combine(AppContext.BaseDirectory, "Themes", "StudioTheme.xaml");
+		Resources.MergedDictionaries.Add(new ResourceDictionary
+		{
+			Source = new Uri(themePath, UriKind.Absolute)
+		});
+	}
 
-        // 设置异常处理
-        DispatcherUnhandledException += (s, args) =>
-        {
-            MessageBox.Show($"发生错误：{args.Exception.Message}", "错误",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            args.Handled = true;
-        };
-    }
+	private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+	{
+		Trace.WriteLine($"[App] Unhandled exception: {e.Exception}");
+		MessageBox.Show("程序发生未处理异常：\n" + e.Exception.Message + "\n\n详细日志见：\n" + LogCollector.LogFilePath, "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Error);
+		e.Handled = true;
+	}
 }

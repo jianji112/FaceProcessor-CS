@@ -16,6 +16,15 @@ namespace FaceProcessor.Views;
 
 public partial class ImageTabView : UserControl
 {
+	private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+	{
+		".png",
+		".jpg",
+		".jpeg",
+		".webp",
+		".bmp"
+	};
+
 	private readonly List<FileItem> _selectedFiles = new();
 
 	private ConfigManager? _configManager;
@@ -204,10 +213,7 @@ public partial class ImageTabView : UserControl
 		};
 		if (dialog.ShowDialog() == true)
 		{
-			foreach (string file in dialog.FileNames)
-			{
-				AddSelectedFile(file);
-			}
+			AddSelectedFiles(dialog.FileNames);
 		}
 	}
 
@@ -220,28 +226,166 @@ public partial class ImageTabView : UserControl
 		}
 
 		string[] patterns = ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"];
-		foreach (string pattern in patterns)
-		{
-			foreach (string file in Directory.GetFiles(dialog.FolderName, pattern))
-			{
-				AddSelectedFile(file);
-			}
-		}
+		AddSelectedFiles(patterns.SelectMany(pattern => Directory.GetFiles(dialog.FolderName, pattern)));
 	}
 
 	private void AddSelectedFile(string path)
 	{
-		if (_selectedFiles.Any(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase)))
+		AddSelectedFiles(new[] { path });
+	}
+
+	private void AddSelectedFiles(IEnumerable<string> paths)
+	{
+		FileItem? lastAdded = null;
+		foreach (string path in paths)
 		{
-			return;
+			if (_selectedFiles.Any(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase)))
+			{
+				continue;
+			}
+
+			FileItem item = new(path);
+			_selectedFiles.Add(item);
+			ImageListBox.Items.Add(item);
+			lastAdded = item;
 		}
 
-		FileItem item = new(path);
-		_selectedFiles.Add(item);
-		ImageListBox.Items.Add(item);
-		ImageListBox.SelectedItem = item;
+		if (lastAdded != null)
+		{
+			ImageListBox.SelectedItem = lastAdded;
+		}
+
 		UpdateSelectedCount();
 		UpdateOutputDirectoryState();
+	}
+
+	private void RootDragEnter(object sender, DragEventArgs e)
+	{
+		UpdateDropState(e);
+	}
+
+	private void RootDragOver(object sender, DragEventArgs e)
+	{
+		UpdateDropState(e);
+	}
+
+	private void RootDragLeave(object sender, DragEventArgs e)
+	{
+		System.Windows.Point position = e.GetPosition(RootGrid);
+		if (position.X < 0 || position.Y < 0 || position.X > RootGrid.ActualWidth || position.Y > RootGrid.ActualHeight)
+		{
+			SetDropOverlayVisible(false);
+		}
+	}
+
+	private void RootDrop(object sender, DragEventArgs e)
+	{
+		if (TryGetDroppedPaths(e, out string[] paths))
+		{
+			List<string> droppedFiles = EnumerateDroppedImageFiles(paths)
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+			if (droppedFiles.Count > 0)
+			{
+				AddSelectedFiles(droppedFiles);
+			}
+			else
+			{
+				MessageBox.Show("\u672A\u53D1\u73B0\u53EF\u5BFC\u5165\u7684\u56FE\u7247\u6587\u4EF6\u3002", "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Information);
+			}
+		}
+
+		SetDropOverlayVisible(false);
+		e.Handled = true;
+	}
+
+	private void UpdateDropState(DragEventArgs e)
+	{
+		bool canAccept = TryGetDroppedPaths(e, out string[] paths) && paths.Any(CanAcceptDroppedPath);
+		e.Effects = canAccept ? DragDropEffects.Copy : DragDropEffects.None;
+		SetDropOverlayVisible(canAccept);
+		e.Handled = true;
+	}
+
+	private static bool TryGetDroppedPaths(DragEventArgs e, out string[] paths)
+	{
+		if (e.Data.GetDataPresent(DataFormats.FileDrop)
+			&& e.Data.GetData(DataFormats.FileDrop) is string[] droppedPaths
+			&& droppedPaths.Length > 0)
+		{
+			paths = droppedPaths;
+			return true;
+		}
+
+		paths = [];
+		return false;
+	}
+
+	private static bool CanAcceptDroppedPath(string path)
+	{
+		if (File.Exists(path))
+		{
+			return IsSupportedImageFile(path);
+		}
+
+		return Directory.Exists(path) && EnumerateSupportedFiles(path).Any();
+	}
+
+	private static IEnumerable<string> EnumerateDroppedImageFiles(IEnumerable<string> paths)
+	{
+		foreach (string path in paths)
+		{
+			if (File.Exists(path))
+			{
+				if (IsSupportedImageFile(path))
+				{
+					yield return path;
+				}
+
+				continue;
+			}
+
+			if (!Directory.Exists(path))
+			{
+				continue;
+			}
+
+			foreach (string file in EnumerateSupportedFiles(path))
+			{
+				yield return file;
+			}
+		}
+	}
+
+	private static IEnumerable<string> EnumerateSupportedFiles(string directoryPath)
+	{
+		IEnumerable<string> files;
+		try
+		{
+			files = Directory.EnumerateFiles(directoryPath);
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			yield break;
+		}
+
+		foreach (string file in files)
+		{
+			if (IsSupportedImageFile(file))
+			{
+				yield return file;
+			}
+		}
+	}
+
+	private static bool IsSupportedImageFile(string path)
+	{
+		return SupportedImageExtensions.Contains(Path.GetExtension(path));
+	}
+
+	private void SetDropOverlayVisible(bool isVisible)
+	{
+		DropOverlay.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 	}
 
 	private void ClearFiles_Click(object sender, RoutedEventArgs e)

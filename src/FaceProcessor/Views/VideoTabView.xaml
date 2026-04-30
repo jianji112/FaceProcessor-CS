@@ -4,7 +4,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d">
-    <Grid Margin="24,0,24,24">
+    <Grid x:Name="RootGrid"
+          Margin="24,0,24,24"
+          AllowDrop="True"
+          DragEnter="RootDragEnter"
+          DragOver="RootDragOver"
+          DragLeave="RootDragLeave"
+          Drop="RootDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -292,6 +298,37 @@
                            FontWeight="SemiBold"
                            Text="等待开始" />
             </Grid>
+        </Border>
+
+        <Border x:Name="DropOverlay"
+                Grid.RowSpan="2"
+                Grid.ColumnSpan="3"
+                Margin="8"
+                Background="#A8E7F4FF"
+                BorderBrush="#4E94FF"
+                BorderThickness="2"
+                CornerRadius="32"
+                IsHitTestVisible="False"
+                Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <Path Width="54"
+                      Height="54"
+                      Fill="#4E94FF"
+                      Stretch="Uniform"
+                      Data="{StaticResource VideoIconGeometry}" />
+                <TextBlock Margin="0,18,0,0"
+                           HorizontalAlignment="Center"
+                           FontSize="26"
+                           FontWeight="SemiBold"
+                           Foreground="#163A5E"
+                           Text="&#x62D6;&#x62FD;&#x89C6;&#x9891;&#x5230;&#x8FD9;&#x91CC;" />
+                <TextBlock Margin="0,10,0,0"
+                           HorizontalAlignment="Center"
+                           Style="{StaticResource CaptionText}"
+                           Foreground="#31577E"
+                           Text="&#x652F;&#x6301; MP4 / AVI / MOV / MKV / WMV" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

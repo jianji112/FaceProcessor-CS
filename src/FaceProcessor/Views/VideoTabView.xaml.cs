@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,6 +18,16 @@ namespace FaceProcessor.Views;
 
 public partial class VideoTabView : UserControl
 {
+	private static readonly HashSet<string> SupportedVideoExtensions = new(StringComparer.OrdinalIgnoreCase)
+	{
+		".mp4",
+		".avi",
+		".mov",
+		".mkv",
+		".flv",
+		".wmv"
+	};
+
 	private ConfigManager? _configManager;
 
 	private VideoProcessor? _processor;
@@ -184,11 +195,129 @@ public partial class VideoTabView : UserControl
 			return;
 		}
 
-		VideoPathTextBox.Text = dialog.FileName;
-		string directory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
-		string name = Path.GetFileNameWithoutExtension(dialog.FileName);
+		await LoadSelectedVideoAsync(dialog.FileName);
+	}
+
+	private async Task LoadSelectedVideoAsync(string videoPath)
+	{
+		VideoPathTextBox.Text = videoPath;
+		string directory = Path.GetDirectoryName(videoPath) ?? string.Empty;
+		string name = Path.GetFileNameWithoutExtension(videoPath);
 		OutputPathTextBox.Text = Path.Combine(directory, name + "_processed.mp4");
-		await LoadVideoPreviewAsync(dialog.FileName);
+		UpdateOutputDirectoryState();
+		await LoadVideoPreviewAsync(videoPath);
+	}
+
+	private void RootDragEnter(object sender, DragEventArgs e)
+	{
+		UpdateDropState(e);
+	}
+
+	private void RootDragOver(object sender, DragEventArgs e)
+	{
+		UpdateDropState(e);
+	}
+
+	private void RootDragLeave(object sender, DragEventArgs e)
+	{
+		System.Windows.Point position = e.GetPosition(RootGrid);
+		if (position.X < 0 || position.Y < 0 || position.X > RootGrid.ActualWidth || position.Y > RootGrid.ActualHeight)
+		{
+			SetDropOverlayVisible(false);
+		}
+	}
+
+	private async void RootDrop(object sender, DragEventArgs e)
+	{
+		if (TryResolveDroppedVideo(e, out string? videoPath))
+		{
+			await LoadSelectedVideoAsync(videoPath);
+		}
+		else if (TryGetDroppedPaths(e, out _))
+		{
+			MessageBox.Show("\u672A\u53D1\u73B0\u53EF\u5BFC\u5165\u7684\u89C6\u9891\u6587\u4EF6\u3002", "FaceProcessor", MessageBoxButton.OK, MessageBoxImage.Information);
+		}
+
+		SetDropOverlayVisible(false);
+		e.Handled = true;
+	}
+
+	private void UpdateDropState(DragEventArgs e)
+	{
+		bool canAccept = TryResolveDroppedVideo(e, out _);
+		e.Effects = canAccept ? DragDropEffects.Copy : DragDropEffects.None;
+		SetDropOverlayVisible(canAccept);
+		e.Handled = true;
+	}
+
+	private static bool TryResolveDroppedVideo(DragEventArgs e, out string? videoPath)
+	{
+		videoPath = null;
+		if (!TryGetDroppedPaths(e, out string[] paths))
+		{
+			return false;
+		}
+
+		videoPath = FindFirstSupportedVideo(paths);
+		return !string.IsNullOrWhiteSpace(videoPath);
+	}
+
+	private static bool TryGetDroppedPaths(DragEventArgs e, out string[] paths)
+	{
+		if (e.Data.GetDataPresent(DataFormats.FileDrop)
+			&& e.Data.GetData(DataFormats.FileDrop) is string[] droppedPaths
+			&& droppedPaths.Length > 0)
+		{
+			paths = droppedPaths;
+			return true;
+		}
+
+		paths = [];
+		return false;
+	}
+
+	private static string? FindFirstSupportedVideo(IEnumerable<string> paths)
+	{
+		foreach (string path in paths)
+		{
+			if (File.Exists(path) && IsSupportedVideoFile(path))
+			{
+				return path;
+			}
+
+			if (!Directory.Exists(path))
+			{
+				continue;
+			}
+
+			IEnumerable<string> files;
+			try
+			{
+				files = Directory.EnumerateFiles(path);
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				continue;
+			}
+
+			string? firstVideo = files.FirstOrDefault(IsSupportedVideoFile);
+			if (!string.IsNullOrWhiteSpace(firstVideo))
+			{
+				return firstVideo;
+			}
+		}
+
+		return null;
+	}
+
+	private static bool IsSupportedVideoFile(string path)
+	{
+		return SupportedVideoExtensions.Contains(Path.GetExtension(path));
+	}
+
+	private void SetDropOverlayVisible(bool isVisible)
+	{
+		DropOverlay.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 	}
 
 	private void BrowseOutput_Click(object sender, RoutedEventArgs e)

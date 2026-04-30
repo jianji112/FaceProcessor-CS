@@ -5,6 +5,10 @@
     <FontFamily x:Key="BodyFont">Microsoft YaHei UI</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Code</FontFamily>
 
+    <Geometry x:Key="ImageIconGeometry">F1 M 4,3 L 20,3 C 21.1046,3 22,3.89543 22,5 L 22,19 C 22,20.1046 21.1046,21 20,21 L 4,21 C 2.89543,21 2,20.1046 2,19 L 2,5 C 2,3.89543 2.89543,3 4,3 Z M 5,7 L 5,17.8 L 9.6,13.2 L 12.6,16.2 L 17,10.8 L 19,13.3 L 19,7 Z M 8,8.3 C 6.95079,8.3 6.1,9.15079 6.1,10.2 C 6.1,11.2492 6.95079,12.1 8,12.1 C 9.04921,12.1 9.9,11.2492 9.9,10.2 C 9.9,9.15079 9.04921,8.3 8,8.3 Z</Geometry>
+    <Geometry x:Key="FolderIconGeometry">F1 M 3,6.5 C 3,5.11929 4.11929,4 5.5,4 L 9.6,4 C 10.2444,4 10.8624,4.25893 11.3159,4.71967 L 12.5,5.9 L 18.5,5.9 C 19.8807,5.9 21,7.01929 21,8.4 L 21,18.5 C 21,19.8807 19.8807,21 18.5,21 L 5.5,21 C 4.11929,21 3,19.8807 3,18.5 Z</Geometry>
+    <Geometry x:Key="VideoIconGeometry">F1 M 4.5,4 L 15.5,4 C 16.8807,4 18,5.11929 18,6.5 L 18,9.1 L 21.5,6.8 L 21.5,18.2 L 18,15.9 L 18,18.5 C 18,19.8807 16.8807,21 15.5,21 L 4.5,21 C 3.11929,21 2,19.8807 2,18.5 L 2,6.5 C 2,5.11929 3.11929,4 4.5,4 Z M 9,8 L 9,17 L 15,12.5 Z</Geometry>
+
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#E9F4FF" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#F7FBFF" />
     <SolidColorBrush x:Key="SurfaceAltBrush" Color="#EEF6FF" />
@@ -38,6 +42,23 @@
     <LinearGradientBrush x:Key="ProgressBrush" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="#3879FF" Offset="0" />
         <GradientStop Color="#56BFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="ShellBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#DBF7FBFF" Offset="0" />
+        <GradientStop Color="#C5E6FF" Offset="0.48" />
+        <GradientStop Color="#B8D6F5" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="TitleBarBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#F4FBFF" Offset="0" />
+        <GradientStop Color="#E9F5FF" Offset="0.58" />
+        <GradientStop Color="#E2F0FF" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="ScrollThumbBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#9BD6FF" Offset="0" />
+        <GradientStop Color="#4D94FF" Offset="1" />
     </LinearGradientBrush>
 
     <Style TargetType="TextBlock">
@@ -80,17 +101,18 @@
     </Style>
 
     <Style x:Key="ShellBorder" TargetType="Border">
-        <Setter Property="Background" Value="#8CFFFFFF" />
-        <Setter Property="BorderBrush" Value="#99FFFFFF" />
+        <Setter Property="Background" Value="{StaticResource ShellBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="#68FFFFFF" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="30" />
+        <Setter Property="CornerRadius" Value="32" />
+        <Setter Property="Padding" Value="0" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Effect">
             <Setter.Value>
-                <DropShadowEffect BlurRadius="42"
+                <DropShadowEffect BlurRadius="48"
                                   ShadowDepth="0"
                                   Color="#3B72A8"
-                                  Opacity="0.18" />
+                                  Opacity="0.22" />
             </Setter.Value>
         </Setter>
     </Style>
@@ -121,10 +143,21 @@
     </Style>
 
     <Style x:Key="WindowIconBadge" TargetType="Border" BasedOn="{StaticResource IconBadge}">
-        <Setter Property="Width" Value="42" />
-        <Setter Property="Height" Value="42" />
-        <Setter Property="CornerRadius" Value="14" />
-        <Setter Property="Background" Value="#F5FAFF" />
+        <Setter Property="Width" Value="56" />
+        <Setter Property="Height" Value="56" />
+        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="Background" Value="#E5F5FF" />
+        <Setter Property="BorderBrush" Value="#9FD1FF" />
+        <Setter Property="Padding" Value="6" />
+    </Style>
+
+    <Style x:Key="TitleBarLogoBadge" TargetType="Border" BasedOn="{StaticResource IconBadge}">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Background" Value="#D9ECFF" />
+        <Setter Property="BorderBrush" Value="#A4CFFF" />
+        <Setter Property="Padding" Value="3" />
     </Style>
 
     <Style x:Key="MetricChip" TargetType="Border">
@@ -195,6 +228,61 @@
         <Setter Property="BorderBrush" Value="#FF9DA4" />
     </Style>
 
+    <Style x:Key="TitleBarButton" TargetType="Button">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="#00FFFFFF" />
+        <Setter Property="BorderBrush" Value="#00FFFFFF" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="12">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#C4E8FF" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#AAD8FF" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TitleBarCloseButton" TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="12">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#F26A75" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#D85A67" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="ThemedTabControl" TargetType="TabControl">
         <Setter Property="Template">
             <Setter.Value>
@@ -205,10 +293,13 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TabPanel Grid.Row="0"
-                                  Margin="0,0,0,20"
+                                  Margin="0,10,0,26"
                                   HorizontalAlignment="Center"
+                                  Panel.ZIndex="2"
+                                  Background="Transparent"
                                   IsItemsHost="True" />
                         <ContentPresenter Grid.Row="1"
+                                          Margin="0,6,0,0"
                                           ContentSource="SelectedContent" />
                     </Grid>
                 </ControlTemplate>
@@ -220,48 +311,55 @@
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="FontSize" Value="18" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="42,20" />
-        <Setter Property="Margin" Value="8,0" />
+        <Setter Property="Padding" Value="44,18" />
+        <Setter Property="Margin" Value="10,0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Grid>
+                    <Grid Margin="0,8,0,0">
                         <Border x:Name="HeaderBorder"
-                                Background="#D9F2FBFF"
-                                BorderBrush="#B8DCFF"
-                                BorderThickness="1"
-                                CornerRadius="22"
+                                Background="#F2FAFF"
+                                BorderBrush="#A7D5FF"
+                                BorderThickness="1.2"
+                                CornerRadius="24"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               ContentSource="Header" />
                         </Border>
-                        <Border x:Name="Accent"
-                                Width="46"
-                                Height="12"
-                                Margin="0,0,0,-12"
-                                VerticalAlignment="Bottom"
-                                HorizontalAlignment="Center"
-                                Background="#00000000"
-                                CornerRadius="0,0,12,12" />
+                        <Border x:Name="GlowRing"
+                                Margin="-2,-2,-2,-2"
+                                Background="#00FFFFFF"
+                                BorderBrush="#00000000"
+                                BorderThickness="0"
+                                CornerRadius="26" />
+                        <Ellipse x:Name="Accent"
+                                 Width="44"
+                                 Height="8"
+                                 Margin="0,0,0,-14"
+                                 VerticalAlignment="Bottom"
+                                 HorizontalAlignment="Center"
+                                 Fill="#00000000" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="HeaderBorder" Property="Background" Value="#F8FCFF" />
+                            <Setter TargetName="HeaderBorder" Property="Background" Value="#FCFEFF" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                            <Setter TargetName="HeaderBorder" Property="Background" Value="#ECF7FF" />
-                            <Setter TargetName="HeaderBorder" Property="BorderBrush" Value="#87C1FF" />
+                            <Setter TargetName="HeaderBorder" Property="Background" Value="#F7FCFF" />
+                            <Setter TargetName="HeaderBorder" Property="BorderBrush" Value="#76B8FF" />
                             <Setter TargetName="HeaderBorder" Property="Effect">
                                 <Setter.Value>
-                                    <DropShadowEffect BlurRadius="22"
+                                    <DropShadowEffect BlurRadius="30"
                                                       ShadowDepth="0"
                                                       Color="#58AFFF"
-                                                      Opacity="0.38" />
+                                                      Opacity="0.34" />
                                 </Setter.Value>
                             </Setter>
-                            <Setter TargetName="Accent" Property="Background" Value="#56BFFF" />
+                            <Setter TargetName="GlowRing" Property="BorderBrush" Value="#7DBBFF" />
+                            <Setter TargetName="GlowRing" Property="BorderThickness" Value="1" />
+                            <Setter TargetName="Accent" Property="Fill" Value="#56BFFF" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -460,6 +558,130 @@
         <Setter Property="Height" Value="14" />
         <Setter Property="Background" Value="#D8E7F8" />
         <Setter Property="Foreground" Value="{StaticResource ProgressBrush}" />
+    </Style>
+
+    <Style x:Key="GlassSliderThumb" TargetType="Thumb">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid>
+                        <Ellipse Fill="#FDFEFF"
+                                 Stroke="#87C4FF"
+                                 StrokeThickness="1.5" />
+                        <Ellipse Margin="5"
+                                 Fill="#4B95FF" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="GlassSlider" TargetType="Slider">
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Margin="0,4">
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="Slider.DecreaseLarge"
+                                              Background="#D7E8FA"
+                                              BorderThickness="0"
+                                              Height="6"
+                                              Template="{DynamicResource SliderTrackButtonTemplate}" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource GlassSliderThumb}" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="Slider.IncreaseLarge"
+                                              Background="#EAF2FB"
+                                              BorderThickness="0"
+                                              Height="6"
+                                              Template="{DynamicResource SliderTrackButtonTemplate}" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <ControlTemplate x:Key="SliderTrackButtonTemplate" TargetType="RepeatButton">
+        <Border Background="{TemplateBinding Background}"
+                CornerRadius="999" />
+    </ControlTemplate>
+
+    <Style x:Key="GlassScrollThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="{StaticResource ScrollThumbBrush}"
+                            CornerRadius="999"
+                            Margin="1" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="GlassScrollBarButton" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="MinWidth" Value="12" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid x:Name="Root"
+                          Margin="1">
+                        <Border x:Name="TrackBg"
+                                Background="#5EEAF4FF"
+                                CornerRadius="999"
+                                Margin="2" />
+                        <Track x:Name="PART_Track"
+                               IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand"
+                                              Style="{StaticResource GlassScrollBarButton}" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource GlassScrollThumb}" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand"
+                                              Style="{StaticResource GlassScrollBarButton}" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Orientation" Value="Horizontal">
+                            <Setter Property="Height" Value="12" />
+                            <Setter Property="Width" Value="Auto" />
+                            <Setter TargetName="TrackBg" Property="Margin" Value="4,2,4,2" />
+                        </Trigger>
+                        <Trigger Property="Orientation" Value="Vertical">
+                            <Setter Property="Width" Value="12" />
+                            <Setter Property="Height" Value="Auto" />
+                            <Setter TargetName="TrackBg" Property="Margin" Value="2,4,2,4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="ThemedListBox" TargetType="ListBox">

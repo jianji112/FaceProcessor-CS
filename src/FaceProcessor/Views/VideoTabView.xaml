@@ -33,10 +33,12 @@
                         Style="{StaticResource SecondaryButton}">
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
-                        <TextBlock Margin="0,0,8,0"
-                                   FontFamily="Segoe Fluent Icons"
-                                   FontSize="18"
-                                   Text="&#xE714;" />
+                        <Path Width="18"
+                              Height="18"
+                              Margin="0,0,10,0"
+                              Fill="#4E94FF"
+                              Stretch="Uniform"
+                              Data="{StaticResource VideoIconGeometry}" />
                         <TextBlock FontSize="16"
                                    Text="选择视频" />
                     </StackPanel>
@@ -137,7 +139,7 @@
                 Margin="0,0,0,18"
                 Style="{StaticResource CardBorder}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
+                <StackPanel Margin="0,0,6,0">
                     <TextBlock Margin="0,0,0,16"
                                Style="{StaticResource SectionTitle}"
                                Text="处理设置" />
@@ -164,6 +166,7 @@
                             Minimum="0.1"
                             Maximum="0.9"
                             TickFrequency="0.05"
+                            Style="{StaticResource GlassSlider}"
                             Value="0.35" />
 
                     <TextBlock Margin="0,16,0,0"

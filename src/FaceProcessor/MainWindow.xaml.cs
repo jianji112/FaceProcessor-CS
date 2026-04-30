@@ -21,7 +21,7 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		InitializeComponent();
-		TryLoadWindowIcon();
+		TryLoadBrandAssets();
 		_configManager = new ConfigManager();
 		ApplyWindowSettings();
 		EnsureGpuPreference();
@@ -31,24 +31,45 @@ public partial class MainWindow : Window
 		VideoTab.Initialize(_configManager, _videoProcessor, _detector);
 		UpdateRuntimeBadges();
 		Closing += OnWindowClosing;
+		StateChanged += (_, _) => UpdateShellFrameForWindowState();
+		UpdateShellFrameForWindowState();
 	}
 
-	private void TryLoadWindowIcon()
+	private void TryLoadBrandAssets()
 	{
 		string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app-icon.png");
-		if (!File.Exists(iconPath))
-		{
-			return;
-		}
+		string brandPath = Path.Combine(AppContext.BaseDirectory, "Assets", "brand-logo.png");
 
 		try
 		{
-			Icon = new BitmapImage(new Uri(iconPath, UriKind.Absolute));
+			if (File.Exists(iconPath))
+			{
+				BitmapImage appIcon = LoadBitmap(iconPath);
+				Icon = appIcon;
+				TitleBarLogoImage.Source = appIcon;
+			}
+
+			string logoSourcePath = File.Exists(brandPath) ? brandPath : iconPath;
+			if (File.Exists(logoSourcePath))
+			{
+				HeaderLogoImage.Source = LoadBitmap(logoSourcePath);
+			}
 		}
 		catch (Exception ex)
 		{
-			Trace.WriteLine("[MainWindow] Failed to load window icon: " + ex.Message);
+			Trace.WriteLine("[MainWindow] Failed to load brand assets: " + ex.Message);
 		}
+	}
+
+	private static BitmapImage LoadBitmap(string absolutePath)
+	{
+		BitmapImage bitmap = new();
+		bitmap.BeginInit();
+		bitmap.CacheOption = BitmapCacheOption.OnLoad;
+		bitmap.UriSource = new Uri(absolutePath, UriKind.Absolute);
+		bitmap.EndInit();
+		bitmap.Freeze();
+		return bitmap;
 	}
 
 	private void EnsureGpuPreference()
@@ -196,5 +217,48 @@ public partial class MainWindow : Window
 		});
 
 		_detector?.Dispose();
+	}
+
+	private void TitleBar_OnMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+	{
+		if (e.ClickCount == 2)
+		{
+			ToggleWindowState();
+			return;
+		}
+
+		if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+		{
+			DragMove();
+		}
+	}
+
+	private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+	{
+		WindowState = WindowState.Minimized;
+	}
+
+	private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+	{
+		ToggleWindowState();
+	}
+
+	private void CloseButton_Click(object sender, RoutedEventArgs e)
+	{
+		Close();
+	}
+
+	private void ToggleWindowState()
+	{
+		WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+		UpdateShellFrameForWindowState();
+	}
+
+	private void UpdateShellFrameForWindowState()
+	{
+		bool maximized = WindowState == WindowState.Maximized;
+		ShellFrame.Margin = maximized ? new Thickness(8) : new Thickness(18);
+		ShellFrame.CornerRadius = maximized ? new CornerRadius(18) : new CornerRadius(32);
+		MaximizeGlyphText.Text = maximized ? "❐" : "□";
 	}
 }

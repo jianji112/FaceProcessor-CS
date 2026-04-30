@@ -33,10 +33,12 @@
                         Style="{StaticResource SecondaryButton}">
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
-                        <TextBlock Margin="0,0,8,0"
-                                   FontFamily="Segoe Fluent Icons"
-                                   FontSize="18"
-                                   Text="&#xE158;" />
+                        <Path Width="18"
+                              Height="18"
+                              Margin="0,0,10,0"
+                              Fill="#4E94FF"
+                              Stretch="Uniform"
+                              Data="{StaticResource ImageIconGeometry}" />
                         <TextBlock FontSize="16"
                                    Text="选择图片" />
                     </StackPanel>
@@ -48,10 +50,12 @@
                         Style="{StaticResource SecondaryButton}">
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
-                        <TextBlock Margin="0,0,8,0"
-                                   FontFamily="Segoe Fluent Icons"
-                                   FontSize="18"
-                                   Text="&#xE188;" />
+                        <Path Width="18"
+                              Height="18"
+                              Margin="0,0,10,0"
+                              Fill="#4E94FF"
+                              Stretch="Uniform"
+                              Data="{StaticResource FolderIconGeometry}" />
                         <TextBlock FontSize="16"
                                    Text="选择文件夹" />
                     </StackPanel>
@@ -85,10 +89,18 @@
 
                         <ListBox x:Name="ImageListBox"
                                  Grid.Row="1"
-                                 DisplayMemberPath="Name"
                                  ItemContainerStyle="{StaticResource ThemedListBoxItem}"
                                  SelectionChanged="ImageListBox_SelectionChanged"
-                                 Style="{StaticResource ThemedListBox}" />
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Style="{StaticResource ThemedListBox}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Path}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
                 </Border>
 
@@ -161,7 +173,7 @@
                 Margin="0,0,0,18"
                 Style="{StaticResource CardBorder}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
+                <StackPanel Margin="0,0,6,0">
                     <TextBlock Margin="0,0,0,16"
                                Style="{StaticResource SectionTitle}"
                                Text="处理设置" />
@@ -225,6 +237,7 @@
                             Minimum="30"
                             Maximum="100"
                             TickFrequency="5"
+                            Style="{StaticResource GlassSlider}"
                             Value="95" />
 
                     <TextBlock Margin="0,18,0,0"

@@ -3,15 +3,25 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:FaceProcessor.Views"
         Title="FaceProcessor"
         Width="1640"
         Height="1040"
         MinWidth="1460"
         MinHeight="920"
-        Background="{StaticResource WindowBackgroundBrush}"
+        Background="Transparent"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
         mc:Ignorable="d">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="24"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="8"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
     <Grid>
         <Grid.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -39,16 +49,79 @@
                      Fill="#403E8DFF" />
         </Canvas>
 
-        <Border Margin="28"
+        <Border x:Name="ShellFrame"
+                Margin="18"
                 Style="{StaticResource ShellBorder}">
-            <Grid>
+            <Grid ClipToBounds="True">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="50" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0"
-                      Margin="28,20,28,12">
+                <Border Grid.Row="0"
+                        Background="{StaticResource TitleBarBrush}"
+                        BorderBrush="#6BFFFFFF"
+                        BorderThickness="0,0,0,1"
+                        MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                    <Grid Margin="16,8,12,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <Border Style="{StaticResource TitleBarLogoBadge}">
+                                <Image x:Name="TitleBarLogoImage"
+                                       Stretch="Uniform" />
+                            </Border>
+                            <TextBlock Margin="10,0,0,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Text="FaceProcessor" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSubtleBrush}"
+                                   Text="AI 人脸处理工作台" />
+
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <Button Click="MinimizeButton_Click"
+                                    Style="{StaticResource TitleBarButton}"
+                                    ToolTip="最小化">
+                                <TextBlock FontSize="16"
+                                           FontWeight="Bold"
+                                           Text="－" />
+                            </Button>
+                            <Button Click="MaximizeButton_Click"
+                                    Style="{StaticResource TitleBarButton}"
+                                    ToolTip="最大化或还原">
+                                <TextBlock x:Name="MaximizeGlyphText"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Text="□" />
+                            </Button>
+                            <Button Click="CloseButton_Click"
+                                    Style="{StaticResource TitleBarCloseButton}"
+                                    ToolTip="关闭">
+                                <TextBlock FontSize="15"
+                                           FontWeight="Bold"
+                                           Text="×" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      Margin="30,24,30,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -58,12 +131,8 @@
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center">
                         <Border Style="{StaticResource WindowIconBadge}">
-                            <TextBlock HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       FontFamily="Segoe Fluent Icons"
-                                       FontSize="18"
-                                       Foreground="{StaticResource AccentBrush}"
-                                       Text="&#xE7FC;" />
+                            <Image x:Name="HeaderLogoImage"
+                                   Stretch="Uniform" />
                         </Border>
                         <StackPanel Margin="14,0,0,0">
                             <TextBlock Text="FaceProcessor"
@@ -97,7 +166,7 @@
                 </Grid>
 
                 <TabControl x:Name="MainTabControl"
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Margin="24,0,24,24"
                             Background="Transparent"
                             BorderThickness="0"

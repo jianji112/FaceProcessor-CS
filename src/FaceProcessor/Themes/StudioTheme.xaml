@@ -287,19 +287,20 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabControl">
-                    <Grid>
+                    <Grid ClipToBounds="False">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TabPanel Grid.Row="0"
-                                  Margin="0,10,0,26"
+                                  Margin="8,12,8,34"
                                   HorizontalAlignment="Center"
                                   Panel.ZIndex="2"
                                   Background="Transparent"
+                                  ClipToBounds="False"
                                   IsItemsHost="True" />
                         <ContentPresenter Grid.Row="1"
-                                          Margin="0,6,0,0"
+                                          Margin="0,10,0,0"
                                           ContentSource="SelectedContent" />
                     </Grid>
                 </ControlTemplate>
@@ -311,13 +312,21 @@
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
         <Setter Property="FontSize" Value="18" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="44,18" />
-        <Setter Property="Margin" Value="10,0" />
+        <Setter Property="Padding" Value="46,18" />
+        <Setter Property="Margin" Value="12,0" />
+        <Setter Property="Panel.ZIndex" Value="1" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Grid Margin="0,8,0,0">
+                    <Grid Margin="0,6,0,16"
+                          ClipToBounds="False">
+                        <Border x:Name="GlowRing"
+                                Background="#00FFFFFF"
+                                BorderBrush="#00000000"
+                                BorderThickness="0"
+                                CornerRadius="26" />
                         <Border x:Name="HeaderBorder"
+                                Margin="2"
                                 Background="#F2FAFF"
                                 BorderBrush="#A7D5FF"
                                 BorderThickness="1.2"
@@ -327,18 +336,13 @@
                                               VerticalAlignment="Center"
                                               ContentSource="Header" />
                         </Border>
-                        <Border x:Name="GlowRing"
-                                Margin="-2,-2,-2,-2"
-                                Background="#00FFFFFF"
-                                BorderBrush="#00000000"
-                                BorderThickness="0"
-                                CornerRadius="26" />
                         <Ellipse x:Name="Accent"
                                  Width="44"
                                  Height="8"
-                                 Margin="0,0,0,-14"
+                                 Margin="0,0,0,-10"
                                  VerticalAlignment="Bottom"
                                  HorizontalAlignment="Center"
+                                 Panel.ZIndex="3"
                                  Fill="#00000000" />
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -346,6 +350,7 @@
                             <Setter TargetName="HeaderBorder" Property="Background" Value="#FCFEFF" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Panel.ZIndex" Value="20" />
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
                             <Setter TargetName="HeaderBorder" Property="Background" Value="#F7FCFF" />
                             <Setter TargetName="HeaderBorder" Property="BorderBrush" Value="#76B8FF" />
@@ -358,7 +363,7 @@
                                 </Setter.Value>
                             </Setter>
                             <Setter TargetName="GlowRing" Property="BorderBrush" Value="#7DBBFF" />
-                            <Setter TargetName="GlowRing" Property="BorderThickness" Value="1" />
+                            <Setter TargetName="GlowRing" Property="BorderThickness" Value="2" />
                             <Setter TargetName="Accent" Property="Fill" Value="#56BFFF" />
                         </Trigger>
                     </ControlTemplate.Triggers>
